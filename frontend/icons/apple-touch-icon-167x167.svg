@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 167 167" width="167" height="167">
+  <defs>
+    <linearGradient id="grad-167" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0071e3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#58a6ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with rounded corners -->
+  <rect width="167" height="167" rx="30" fill="url(#grad-167)"/>
+  
+  <!-- Lotus flower petals (Apple Blue on gradient) -->
+  <g fill="white">
+    <ellipse cx="83.5" cy="58.45" rx="33.4" ry="50.1"/>
+    <ellipse cx="108.62" cy="83.5" rx="33.4" ry="50.1" transform="rotate(90 108.62 83.5)"/>
+    <ellipse cx="83.5" cy="108.55" rx="33.4" ry="50.1" transform="rotate(180 83.5 108.55)"/>
+    <ellipse cx="58.38" cy="83.5" rx="33.4" ry="50.1" transform="rotate(-90 58.38 83.5)"/>
+  </g>
+</svg>

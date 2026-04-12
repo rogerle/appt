@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14b8a6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3b82f6;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="192" height="192" rx="38" fill="url(#grad)"/>
+  
+  <!-- Lotus flower petals -->
+  <g fill="white">
+    <ellipse cx="96" cy="50" rx="24" ry="36"/>
+    <ellipse cx="142" cy="76" rx="24" ry="36" transform="rotate(45 142 76)"/>
+    <ellipse cx="142" cy="116" rx="24" ry="36" transform="rotate(90 142 116)"/>
+    <ellipse cx="142" cy="156" rx="24" ry="36" transform="rotate(135 142 156)"/>
+    <ellipse cx="96" cy="182" rx="24" ry="36" transform="rotate(180 96 182)"/>
+    <ellipse cx="50" cy="156" rx="24" ry="36" transform="rotate(225 50 156)"/>
+    <ellipse cx="50" cy="116" rx="24" ry="36" transform="rotate(270 50 116)"/>
+    <ellipse cx="50" cy="76" rx="24" ry="36" transform="rotate(315 50 76)"/>
+  </g>
+</svg>

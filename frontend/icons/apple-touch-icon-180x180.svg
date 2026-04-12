@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" width="180" height="180">
+  <defs>
+    <linearGradient id="grad-180" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0071e3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#58a6ff;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background with rounded corners -->
+  <rect width="180" height="180" rx="32" fill="url(#grad-180)"/>
+  
+  <!-- Lotus flower petals (Apple Blue on gradient) -->
+  <g fill="white">
+    <ellipse cx="90.0" cy="63.0" rx="36.0" ry="54.0"/>
+    <ellipse cx="117.0" cy="90.0" rx="36.0" ry="54.0" transform="rotate(90 117.0 90.0)"/>
+    <ellipse cx="90.0" cy="117.0" rx="36.0" ry="54.0" transform="rotate(180 90.0 117.0)"/>
+    <ellipse cx="63.0" cy="90.0" rx="36.0" ry="54.0" transform="rotate(-90 63.0 90.0)"/>
+  </g>
+</svg>

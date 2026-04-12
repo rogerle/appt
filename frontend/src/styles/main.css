@@ -1,0 +1,388 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ========================================
+   Apple Design System - Mobile Touch Optimizations
+   Based on Apple Human Interface Guidelines
+   ======================================== */
+
+:root {
+  /* Apple Color Palette */
+  --sk-focus-color: #0071e3;        /* Apple Blue for focus states */
+  --sk-body-link-color: #0066cc;     /* Link blue on light bg */
+  --sk-dark-link-color: #2997ff;     /* Bright blue on dark bg */
+  
+  /* Touch target sizes (Apple HIG minimum) */
+  --touch-target-min: 44px;          /* Minimum interactive element size */
+  --touch-target-safe: 50px;         /* Recommended safe zone */
+}
+
+/* ========================================
+   Core Mobile Optimizations
+   ======================================== */
+
+/* Prevent iOS zoom on input focus - CRITICAL for PWA */
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: default;
+}
+
+body {
+  /* Apple Typography Base */
+  font-family: SF Pro Text, -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 
+               Helvetica, Arial, sans-serif;
+  font-size: 17px; /* Body size per Apple spec */
+  line-height: 1.47;
+  letter-spacing: -0.374px; /* Negative tracking as per Apple design */
+  
+  /* Prevent iOS zoom */
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation; /* Improve tap response time */
+  overscroll-behavior-y: contain; /* Disable pull-to-refresh on PWA install */
+}
+
+/* ========================================
+   Touch-Friendly Interactive Elements
+   Apple HIG: Minimum 44x44pt touch targets
+   ======================================== */
+
+button, a, input[type="button"], input[type="submit"] {
+  min-height: var(--touch-target-min); /* Apple minimum */
+  min-width: var(--touch-target-min);
+  padding: 8px 15px; /* Apple button padding */
+  
+  /* Improve touch response */
+  touch-action: manipulation;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Input fields - prevent iOS zoom, maintain readability */
+input[type="text"], input[type="email"], input[type="password"], 
+input[type="tel"], input[type="date"], input[type="time"],
+select, textarea {
+  font-size: 17px !important; /* Apple body size - prevents iOS zoom */
+  min-height: var(--touch-target-min);
+  padding: 12px 15px;
+  
+  /* Smooth focus states */
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Focus states - Apple Blue (#0071e3) as per design system */
+button:focus-visible, a:focus-visible,
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--sk-focus-color);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   Button Styles (Apple Primary CTA)
+   ======================================== */
+
+.btn-primary {
+  background-color: #0071e3; /* Apple Blue - PRIMARY INTERACTIVE COLOR */
+  color: #ffffff;
+  border-radius: 8px; /* Standard button radius per Apple spec */
+  font-family: SF Pro Text, -apple-system, sans-serif;
+  font-size: 17px;
+  font-weight: 400;
+  padding: 8px 15px;
+  min-height: var(--touch-target-min);
+  touch-action: manipulation;
+}
+
+.btn-primary:hover {
+  background-color: #0077ed; /* Slightly brighter on hover */
+}
+
+.btn-primary:active {
+  background-color: #ededf2; /* Active state per Apple spec */
+}
+
+/* Pill-shaped CTAs (Learn more / Shop links) - 980px radius */
+.btn-pill {
+  border-radius: 980px;
+  padding: 10px 20px;
+  min-height: var(--touch-target-min);
+  font-family: SF Pro Text, -apple-system, sans-serif;
+  font-size: 14px; /* Caption size for pill links */
+}
+
+/* ========================================
+   Navigation & Header Touch Targets
+   ======================================== */
+
+.nav-item {
+  min-height: var(--touch-target-min); /* Ensure touch-friendly nav items */
+  padding: 8px 12px;
+}
+
+.mobile-menu-item {
+  height: var(--touch-target-safe); /* Larger for mobile menu */
+  display: flex;
+  align-items: center;
+  font-size: 17px;
+}
+
+/* ========================================
+   Form Elements - Mobile Optimized
+   ======================================== */
+
+.input-group {
+  position: relative;
+}
+
+.input-field {
+  width: 100%;
+  padding: 12px 15px;
+  font-size: 17px !important; /* Prevent iOS zoom - CRITICAL */
+  border-radius: 8px;
+  background-color: #fafafc; /* Apple default button bg */
+  border: 3px solid rgba(0, 0, 0, 0.04);
+}
+
+.input-field:focus {
+  border-color: var(--sk-focus-color);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--sk-focus-color);
+}
+
+/* ========================================
+   Touch Feedback Animations
+   ======================================== */
+
+@keyframes press-scale {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+.touch-press {
+  transition: transform 0.1s ease;
+}
+
+.touch-press:active {
+  animation: press-scale 0.2s ease;
+}
+
+/* ========================================
+   Swipe Gestures & Horizontal Scrolling
+   ======================================== */
+
+.swipe-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  scroll-behavior: smooth;
+}
+
+.swipe-container::-webkit-scrollbar {
+  display: none; /* Hide scrollbar for cleaner UI */
+}
+
+/* ========================================
+   Mobile-Specific Layout Fixes
+   ======================================== */
+
+/* Prevent layout shift on iOS keyboard */
+@media screen and (orientation: portrait) {
+  html {
+    height: -webkit-fill-available;
+  }
+  
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+}
+
+/* ========================================
+   Responsive Layout - Apple Breakpoints
+   Based on projects/appt/apple/DESIGN.md Section 8
+   ======================================== */
+
+/* Container Centering (Apple's 980px standard) */
+.container {
+  padding-left: 20px;
+  padding-right: 20px;
+}
+
+@media (min-width: 640px) {
+  .container {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+}
+
+@media (min-width: 834px) {
+  .container {
+    max-width: 980px; /* Apple's standard content width */
+    padding-left: 24px;
+    padding-right: 24px;
+  }
+}
+
+@media (min-width: 1070px) {
+  .container {
+    max-width: 980px;
+    padding-left: 32px;
+    padding-right: 32px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .container {
+    max-width: 980px;
+    padding-left: calc((100vw - 980px) / 2 + 24px);
+    padding-right: calc((100vw - 980px) / 2 + 24px);
+  }
+}
+
+/* Typography Scaling (Apple Optical Sizing)
+   SF Pro Display for headings ≥20px, SF Pro Text <20px */
+h1 {
+  font-size: clamp(28px, 5vw, 56px); /* Fluid typography per Apple spec */
+}
+
+@media (min-width: 1070px) {
+  h1 {
+    font-family: 'SF Pro Display', -apple-system, sans-serif;
+    line-height: 1.07; /* Tight headline spacing */
+    letter-spacing: -0.28px; /* Negative tracking for headlines */
+  }
+}
+
+@media (max-width: 1069px) {
+  h1, h2, h3 {
+    font-family: 'SF Pro Text', -apple-system, sans-serif;
+  }
+}
+
+/* Responsive Grid Layouts */
+.product-grid,
+.card-grid {
+  display: grid;
+  gap: 24px;
+}
+
+@media (max-width: 639px) {
+  .product-grid,
+  .card-grid {
+    grid-template-columns: 1fr; /* Single column on mobile */
+    gap: 20px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 833px) {
+  .product-grid,
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr); /* Two columns on tablet */
+    gap: 20px;
+  }
+}
+
+@media (min-width: 834px) and (max-width: 1069px) {
+  .product-grid,
+  .card-grid {
+    grid-template-columns: repeat(2, 1fr); /* Maintain two columns */
+    gap: 24px;
+  }
+}
+
+@media (min-width: 1070px) and (max-width: 1439px) {
+  .product-grid,
+  .card-grid {
+    grid-template-columns: repeat(3, 1fr); /* Three columns on desktop */
+    gap: 28px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .product-grid,
+  .card-grid {
+    grid-template-columns: repeat(4, 1fr); /* Four columns on large screens */
+    gap: 32px;
+  }
+}
+
+/* Responsive Images - Maintain Aspect Ratio */
+.responsive-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.hero-image {
+  width: 100vw; /* Full-bleed images maintain at all breakpoints */
+  max-width: none;
+}
+
+@media (max-width: 639px) {
+  .hero-image {
+    aspect-ratio: 16/9; /* Maintain aspect ratio on mobile */
+  }
+}
+
+/* Navigation Collapsing Strategy */
+.nav-desktop {
+  display: flex;
+}
+
+.nav-mobile-menu {
+  display: none; /* Hidden on desktop */
+}
+
+@media (max-width: 833px) {
+  .nav-desktop {
+    display: none; /* Hide horizontal nav on tablet/mobile */
+  }
+  
+  .nav-mobile-menu {
+    display: block; /* Show hamburger menu */
+  }
+}
+
+/* Touch Target Sizes by Breakpoint (Apple HIG) */
+@media (max-width: 639px) {
+  button, a, .interactive-element {
+    min-height: 44px; /* Apple HIG minimum on mobile */
+    min-width: 44px;
+    padding: 8px 15px;
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  button, a, .interactive-element {
+    min-height: calc(44px * 0.9); /* ~40px on tablet */
+    min-width: calc(44px * 0.9);
+  }
+}
+
+/* Accessibility - Enhanced Touch Targets (WCAG 2.1 AAA) */
+.accessibility-enhanced button,
+.accessibility-enhanced a {
+  min-height: var(--touch-target-safe);
+  min-width: var(--touch-target-safe);
+}
+
+/* ========================================
+   Smooth Scrolling & Scroll Snap
+   ======================================== */
+
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; /* Essential for iOS momentum scrolling */
+}
+
+/* Optional: Scroll snap for mobile sections */
+.scroll-snap-container {
+  scroll-snap-type: y mandatory;
+}
+
+.scroll-snap-section {
+  scroll-snap-align: start;
+  min-height: 100vh;
+}
