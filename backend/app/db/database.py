@@ -117,8 +117,15 @@ def get_db() -> Generator[Session, None, None]:
     Yields:
         Session: SQLAlchemy database session
     """
-    with db_manager.get_session() as session:
+    session = db_manager.SessionLocal()
+    try:
         yield session
+        session.commit()
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
 
 def init_db() -> None:
