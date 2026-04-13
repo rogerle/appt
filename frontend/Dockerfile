@@ -8,8 +8,8 @@ WORKDIR /app
 COPY package.json ./
 COPY package-lock.json* ./
 
-# Install dependencies
-RUN npm ci --only=production
+# Install production dependencies only
+RUN npm install --omit=dev
 
 # Copy source code
 COPY . .
@@ -20,8 +20,7 @@ EXPOSE 5173
 # Start development server with hot reload
 CMD ["npm", "run", "dev", "--", "--host"]
 
----
-
+# ============================================================================
 # Stage 2: Production build stage
 FROM node:20-alpine as builder
 
@@ -32,7 +31,7 @@ COPY package.json ./
 COPY package-lock.json* ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm ci
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -40,8 +39,7 @@ COPY . .
 # Build production bundle
 RUN npm run build
 
----
-
+# ============================================================================
 # Stage 3: Production stage with nginx
 FROM nginx:alpine as production
 

@@ -4,12 +4,6 @@ FROM python:3.11-slim as builder
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    postgresql-dev \
-    && rm -rf /var/lib/apt/lists/*
-
 # Install Python dependencies to virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
@@ -21,11 +15,6 @@ RUN pip install --no-cache-dir --upgrade -r requirements.txt
 FROM python:3.11-slim as production
 
 WORKDIR /app
-
-# Install runtime dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client \
-    && rm -rf /var/lib/apt/lists/*
 
 # Copy virtual environment from builder
 COPY --from=builder /opt/venv /opt/venv

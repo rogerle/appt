@@ -6,7 +6,7 @@ Includes time conflict detection for instructors.
 """
 
 from datetime import date, datetime, time
-from typing import Annotated, List
+from typing import Annotated, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session

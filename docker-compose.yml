@@ -6,16 +6,16 @@ services:
     image: postgres:15-alpine
     container_name: appt-db
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-appt}
-      POSTGRES_USER: ${POSTGRES_USER:-appt_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ERROR: POSTGRES_PASSWORD is required}
+      POSTGRES_DB: appt
+      POSTGRES_USER: appt_user
+      POSTGRES_PASSWORD: change_me_in_production
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appt_user}"]
+      test: ["CMD-SHELL", "pg_isready -U appt_user"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -29,9 +29,10 @@ services:
       dockerfile: Dockerfile
     container_name: appt-backend
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-appt_user}:${POSTGRES_PASSWORD:?ERROR: POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-appt}
-      FASTAPI_ENV: ${FASTAPI_ENV:-production}
-      SECRET_KEY: ${SECRET_KEY:?ERROR: SECRET_KEY is required}
+      DATABASE_URL: postgresql://appt_user:change_me_in_production@postgres:5432/appt
+      FASTAPI_ENV: development
+      SECRET_KEY: change_this_to_a_random_512bit_key
+      ADMIN_PASSWORD: admin_password_change_me
     ports:
       - "8000:8000"
     depends_on:
