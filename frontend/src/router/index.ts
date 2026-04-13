@@ -6,7 +6,8 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      redirect: '/booking' // Redirect to booking page by default
+      component: () => import('../views/Home.vue'),
+      meta: { title: '首页' }
     },
     
     {
