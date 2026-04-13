@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Base Styles */
+@layer base {
+  html {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #f8fafc; /* primary-50 */
+    color: #475569; /* primary-600 */
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Mobile-first touch targets (44px minimum) */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Focus styles for accessibility */
+  *:focus-visible {
+    outline: 2px solid #10b981; /* accent-green */
+    outline-offset: 2px;
+  }
+
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Custom Component Classes */
+@layer components {
+  .btn-primary {
+    @apply bg-accent-dark text-white px-6 py-3 rounded-xl font-semibold 
+           hover:bg-accent-green transition-colors duration-200 
+           active:scale-[0.98] shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-primary-100 text-primary-700 px-6 py-3 rounded-xl font-medium 
+           hover:bg-primary-200 transition-colors duration-200;
+  }
+
+  .card {
+    @apply bg-white rounded-xl shadow-md p-4 border border-primary-200;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 rounded-lg border border-primary-300 
+           focus:border-accent-green focus:ring-2 focus:ring-accent-light/50 
+           outline-none transition-all duration-200 placeholder:text-primary-400;
+  }
+
+  .time-slot {
+    @apply bg-white border-2 border-primary-200 rounded-lg px-3 py-2 
+           text-sm font-medium cursor-pointer hover:border-accent-green 
+           hover:bg-accent-light transition-all duration-200 active:scale-[0.95];
+  }
+
+  .time-slot.selected {
+    @apply bg-accent-dark border-accent-dark text-white;
+  }
+
+  .time-slot.disabled {
+    @apply bg-primary-100 border-primary-200 text-primary-400 cursor-not-allowed opacity-50;
+  }
+}
+
+/* Utility classes for common patterns */
+@layer utilities {
+  .container-mobile {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1rem;
+  }
+
+  .flex-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .grid-responsive {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+  }
+
+  .text-ellipsis {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: appt-db
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-appt}
+      POSTGRES_USER: ${POSTGRES_USER:-appt_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?ERROR: POSTGRES_PASSWORD is required}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appt_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - appt-network
+
+  # Python FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: appt-backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-appt_user}:${POSTGRES_PASSWORD:?ERROR: POSTGRES_PASSWORD is required}@postgres:5432/${POSTGRES_DB:-appt}
+      FASTAPI_ENV: ${FASTAPI_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY:?ERROR: SECRET_KEY is required}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app  # For development hot-reload (optional)
+    networks:
+      - appt-network
+
+  # Vue 3 Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: production
+    container_name: appt-frontend
+    ports:
+      - "8080:80"  # Host port 8080 -> Container port 80
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - appt-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  appt-network:
+    driver: bridge
