@@ -418,7 +418,7 @@ services:
     build: ./frontend
     container_name: appt-frontend
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       - backend
     volumes:
@@ -481,7 +481,7 @@ docker-compose exec backend python alembic upgrade head
 ```
 
 ### 5. 访问系统
-- 前端：http://localhost
+- 前端：http://localhost:8080
 - API: http://localhost:8000/api/docs (自动生成的 Swagger UI)
 
 ---
