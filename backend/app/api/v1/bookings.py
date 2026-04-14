@@ -68,8 +68,8 @@ def check_slot_capacity(db: Session, schedule_id: int) -> bool:
              status_code=status.HTTP_201_CREATED, summary="Create new booking")
 async def create_booking(
     booking_data: BookingCreate,
-    db: Session = Depends(get_db),
-    admin_token: str = Depends(lambda token: settings.ADMIN_USERNAME)  # TODO: JWT validation (public endpoint)
+    db: Session = Depends(get_db)
+    # No authentication required - public endpoint
 ):
     """Submit a yoga class reservation for a customer."""
     
@@ -99,7 +99,7 @@ async def create_booking(
         )
     
     # Check slot capacity
-    if not check_slot_capacity(db, booking_data.schedule_id):
+    if check_slot_capacity(db, booking_data.schedule_id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="This time slot is fully booked",
@@ -139,10 +139,15 @@ async def list_bookings(
     # Mask phone number in response (privacy protection)
     masked_phone = f"{phone[:3]}****{phone[-4:]}" if len(phone) == 11 else "***-***-{phone[-4:]}"
     
-    bookings = db.query(Booking).filter(
+    # Get bookings with schedule details via JOIN for proper ordering
+    from app.db.models.schedule import Schedule
+    
+    bookings = db.query(Booking).join(
+        Schedule, Booking.schedule_id == Schedule.id
+    ).filter(
         Booking.customer_phone == phone,
         Booking.status != 'cancelled'  # Only show active bookings by default
-    ).order_by(Booking.schedule_date.desc()).all()
+    ).order_by(Schedule.schedule_date.desc()).all()
     
     response = []
     for booking in bookings:

@@ -10,12 +10,18 @@ import time
 from typing import Generator
 
 from sqlalchemy import create_engine, event
-from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import declarative_base, sessionmaker, Session
+
+# SQLAlchemy 2.0 style Base - call the function to get the base class
+Base = declarative_base()
 
 from app.core.config import settings
 
 # Configure logger
 logger = logging.getLogger(__name__)
+
+# SQLAlchemy Base class for models (export as Base for compatibility)
+Base = declarative_base()
 
 
 class DatabaseManager:

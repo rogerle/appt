@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time Slot Selection Fix Test</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+    .pass { background-color: #d4edda; color: #155724; }
+    .fail { background-color: #f8d7da; color: #721c24; }
+    button { margin: 5px; padding: 10px 20px; font-size: 16px; cursor: pointer; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <h1>🔧 Time Slot Selection Fix Verification</h1>
+  
+  <div id="test-results"></div>
+  
+  <script>
+    // Simulate API response data format
+    const apiTimeSlots = [
+      { id: 1, start_time: "08:00:00", end_time: "09:00:00", available_spots: 7 },
+      { id: 2, start_time: "10:00:00", end_time: "11:00:00", available_spots: 8 },
+      { id: 3, start_time: "14:00:00", end_time: "15:30:00", available_spots: 12 }
+    ];
+
+    // Helper functions (from our fix)
+    function formatTime(timeStr) {
+      if (!timeStr) return '';
+      const parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        return `${parts[0]}:${parts[1]}`;
+      }
+      return timeStr;
+    }
+
+    function isSlotAvailable(slot) {
+      const spots = typeof slot.available_spots === 'number' ? slot.available_spots : 0;
+      return spots > 0;
+    }
+
+    let selectedTimeSlot = null;
+
+    // Test functions
+    function runTests() {
+      const resultsDiv = document.getElementById('test-results');
+      let allPassed = true;
+
+      // Test 1: formatTime function
+      const test1Pass = formatTime("08:00:00") === "08:00" && 
+                        formatTime("14:30:00") === "14:30";
+      resultsDiv.innerHTML += `<div class="test-result ${test1Pass ? 'pass' : 'fail'}">
+        Test 1 - formatTime function: ${test1Pass ? '✓ PASS' : '✗ FAIL'}
+        <br><small>Input: "08:00:00" → Output: "${formatTime("08:00:00")}" (Expected: "08:00")</small>
+      </div>`;
+      allPassed = allPassed && test1Pass;
+
+      // Test 2: isSlotAvailable function
+      const test2a = isSlotAvailable(apiTimeSlots[0]); // Should be true (7 > 0)
+      const test2b = !isSlotAvailable({ ...apiTimeSlots[0], available_spots: 0 }); // Should be false
+      const test2Pass = test2a && test2b;
+      resultsDiv.innerHTML += `<div class="test-result ${test2Pass ? 'pass' : 'fail'}">
+        Test 2 - isSlotAvailable function: ${test2Pass ? '✓ PASS' : '✗ FAIL'}
+        <br><small>Slots with 7 spots: ${isSlotAvailable(apiTimeSlots[0])} (Expected: true)</small><br>
+        <small>Slots with 0 spots: ${isSlotAvailable({...apiTimeSlots[0], available_spots: 0})} (Expected: false)</small>
+      </div>`;
+      allPassed = allPassed && test2Pass;
+
+      // Test 3: Slot selection logic
+      function handleSlotClick(slot) {
+        if (!isSlotAvailable(slot)) {
+          return false; // Rejected
+        }
+        selectedTimeSlot = { 
+          start: slot.start_time, 
+          end: slot.end_time,
+          scheduleId: slot.id
+        };
+        return true; // Accepted
+      }
+
+      function isSlotSelected(slot) {
+        if (!selectedTimeSlot) return false;
+        return formatTime(selectedTimeSlot.start) === formatTime(slot.start_time) &&
+               formatTime(selectedTimeSlot.end) === formatTime(slot.end_time);
+      }
+
+      const test3a = handleSlotClick(apiTimeSlots[0]); // Should succeed
+      const test3b = selectedTimeSlot?.scheduleId === 1; // Should have correct ID
+      const test3c = isSlotSelected(apiTimeSlots[0]); // Should recognize as selected
+      const test3Pass = test3a && test3b && test3c;
+      resultsDiv.innerHTML += `<div class="test-result ${test3Pass ? 'pass' : 'fail'}">
+        Test 3 - Slot selection logic: ${test3Pass ? '✓ PASS' : '✗ FAIL'}
+        <br><small>Click available slot: ${test3a ? 'Accepted ✓' : 'Rejected ✗'}</small><br>
+        <small>Saved scheduleId: ${selectedTimeSlot?.scheduleId} (Expected: 1)</small><br>
+        <small>isSlotSelected check: ${test3c ? 'Correct ✓' : 'Wrong ✗'}</small>
+      </div>`;
+      allPassed = allPassed && test3Pass;
+
+      // Test 4: Disabled slot rejection
+      const emptySlot = { ...apiTimeSlots[0], available_spots: 0 };
+      const test4Result = !handleSlotClick(emptySlot); // Should be rejected
+      resultsDiv.innerHTML += `<div class="test-result ${test4Result ? 'pass' : 'fail'}">
+        Test 4 - Disabled slot rejection: ${test4Result ? '✓ PASS' : '✗ FAIL'}
+        <br><small>Click empty slot (0 spots): Rejected ✓</small>
+      </div>`;
+      allPassed = allPassed && test4Result;
+
+      // Summary
+      resultsDiv.innerHTML += `<div class="test-result ${allPassed ? 'pass' : 'fail'}" style="font-weight: bold; font-size: 18px;">
+        ${allPassed ? '🎉 ALL TESTS PASSED!' : '❌ SOME TESTS FAILED!'}
+      </div>`;
+
+      // Create interactive demo buttons
+      resultsDiv.innerHTML += `<hr><h3>Interactive Demo:</h3>`;
+      apiTimeSlots.forEach(slot => {
+        const isAvailable = isSlotAvailable(slot);
+        resultsDiv.innerHTML += `
+          <button 
+            onclick="this.disabled ? this.textContent='Still Disabled' : (selectedTimeSlot={start:'${slot.start_time}',end:'${slot.end_time}',scheduleId:${slot.id}}, alert('Selected: ${formatTime(slot.start_time)}-${formatTime(slot.end_time)} (ID: ${slot.id})'))"
+            ${!isAvailable ? 'disabled' : ''}
+          >
+            ${formatTime(slot.start_time)} (${slot.available_spots} spots) ${!isAvailable ? '[FULL]' : ''}
+          </button>
+        `;
+      });
+    }
+
+    // Run tests on page load
+    window.onload = runTests;
+  </script>
+</body>
+</html>

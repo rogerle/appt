@@ -156,7 +156,7 @@ async def batch_create_schedules(
              summary="Get available time slots")
 async def list_available_slots(
     db: Session = Depends(get_db),
-    date_param: date = Query(..., description="Query date (YYYY-MM-DD)"),
+    date: date = Query(..., alias="date", description="Query date (YYYY-MM-DD)"),
     instructor_id: Optional[int] = Query(None, description="Filter by instructor ID")
 ):
     """Get all available time slots for a specific date."""
@@ -164,7 +164,7 @@ async def list_available_slots(
     from app.db.models.schedule import Schedule
     
     query = db.query(Schedule).filter(
-        Schedule.schedule_date == date_param,
+        Schedule.schedule_date == date,
         ~Schedule.is_recurring
     )
     

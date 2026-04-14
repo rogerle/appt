@@ -70,6 +70,8 @@ async def list_instructors(
     """Get all yoga instructors with their available time slots."""
     
     from app.db.models.instructor import Instructor
+    from app.db.models.schedule import Schedule
+    from app.db.models.booking import Booking
     
     query = db.query(Instructor)
     
@@ -78,25 +80,46 @@ async def list_instructors(
     
     instructors = query.all()
     
-    # Calculate available slots for each instructor (simplified logic)
+    # Calculate available slots for each instructor based on date parameter
     response_data = []
     target_date = date_param or datetime.utcnow().date()
     
     for instructor in instructors:
-        # TODO: Implement proper slot calculation from schedules table
-        available_slots = [
-            TimeSlot(start_time=time(10, 0), end_time=time(11, 0), available_spots=5),
-            TimeSlot(start_time=time(15, 0), end_time=time(16, 0), available_spots=3)
-        ]
+        available_slots = []
+        
+        if date_param:
+            # Get schedules for this instructor on the specified date
+            schedules = db.query(Schedule).filter(
+                Schedule.instructor_id == instructor.id,
+                Schedule.schedule_date == date_param,
+                ~Schedule.is_recurring
+            ).all()
+            
+            for schedule in schedules:
+                # Count confirmed bookings for this slot
+                booked_count = db.query(Booking).filter(
+                    Booking.schedule_id == schedule.id,
+                    Booking.status == 'confirmed'
+                ).count()
+                
+                available_spots = max(0, schedule.max_bookings - booked_count)
+                
+                # Only include slots that have availability
+                if available_spots > 0:
+                    available_slots.append(TimeSlot(
+                        start_time=schedule.start_time,
+                        end_time=schedule.end_time,
+                        available_spots=available_spots
+                    ))
         
         response_data.append(InstructorWithSlotsResponse(
             id=instructor.id,
             name=instructor.name,
             description=instructor.description,
-            avatar_url=None,
+            avatar_url=instructor.avatar_url,
             is_active=instructor.is_active,
-            created_at=datetime.utcnow(),
-            available_slots=available_slots if date_param else []
+            created_at=instructor.created_at,
+            available_slots=available_slots
         ))
     
     return response_data

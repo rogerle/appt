@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import InstructorCard from '../components/InstructorCard.vue'
+import { instructorApi, scheduleApi, bookingApi } from '../api/services'
 
 const router = useRouter()
 
@@ -11,7 +12,7 @@ const currentStep = ref(1)
 // Form state
 const selectedDate = ref('')
 const selectedInstructorId = ref<number | null>(null)
-const selectedTimeSlot = ref<{ start: string; end: string } | null>(null)
+const selectedTimeSlot = ref<{ start: string; end: string; scheduleId?: number } | null>(null)
 
 // Customer info
 const customerName = ref('')
@@ -20,19 +21,23 @@ const customerNote = ref('')
 
 // Loading state
 const loading = ref(false)
+const instructors = ref<any[]>([])
+const timeSlots = ref<any[]>([])
+const error = ref<string | null>(null)
 
 onMounted(() => {
   // Initialize date to today
   selectedDate.value = new Date().toISOString().split('T')[0]
 })
 
-async function nextStep() {
-  if (currentStep.value === 1 && !selectedDate.value) return alert('请选择日期')
-  if (currentStep.value === 2 && !selectedInstructorId.value) return alert('请选择教练')
-  if (currentStep.value === 3 && !selectedTimeSlot.value) return alert('请选择时间段')
-  
-  currentStep.value++
-}
+// Watch for date changes to reload instructors
+watch(selectedDate, async (newDate) => {
+  if (newDate && currentStep.value >= 2) {
+    await loadInstructors(newDate)
+  }
+})
+
+
 
 function prevStep() {
   if (currentStep.value > 1) currentStep.value--
@@ -43,25 +48,168 @@ async function submitBooking() {
     return alert('请填写姓名和电话')
   }
   
-  loading.value = true
+  // Use the stored schedule ID directly, or find from timeSlots
+  let scheduleId: number | undefined
   
-  // TODO: Call API to create booking
+  if (selectedTimeSlot.value?.scheduleId) {
+    // New approach: use stored ID
+    scheduleId = selectedTimeSlot.value.scheduleId
+  } else {
+    // Fallback: find by time comparison
+    const selectedSlot = timeSlots.value.find(
+      slot => formatTime(slot.start_time) === formatTime(selectedTimeSlot.value!.start) &&
+              formatTime(slot.end_time) === formatTime(selectedTimeSlot.value!.end)
+    )
+    scheduleId = selectedSlot?.id
+  }
+  
+  if (!scheduleId) {
+    return alert('未找到选中的时间段，请重新选择')
+  }
+  
+  loading.value = true
+  error.value = null
+  
   try {
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simulate API call
+    const response = await bookingApi.createBooking({
+      schedule_id: scheduleId,
+      customer_name: customerName.value,
+      customer_phone: customerPhone.value,
+      notes: customerNote.value || undefined
+    })
     
+    alert(response.message || '预约成功！')
     router.push('/my-bookings')
-    alert('预约成功！')
-  } catch (error) {
-    console.error('Booking failed:', error)
-    alert('预约失败，请稍后重试')
+  } catch (err: any) {
+    console.error('Booking failed:', err)
+    
+    // Handle specific error types
+    if (err.isConflict) {
+      alert(err.message || '预约冲突：该时段已满或您已有预约')
+    } else if (err.response?.status === 404) {
+      alert('时间段不存在或不可用')
+    } else {
+      alert('预约失败：' + (err.message || '请稍后重试'))
+    }
   } finally {
     loading.value = false
   }
 }
 
-// TODO: Implement these functions by calling API client
-function loadInstructors() { return [] as any[] }
-function loadTimeSlots() { return [] as any[] }
+// Load instructors for selected date
+async function loadInstructors(dateStr?: string) {
+  const dateToLoad = dateStr || selectedDate.value
+  if (!dateToLoad) return
+  
+  loading.value = true
+  error.value = null
+  
+  try {
+    instructors.value = await instructorApi.getAll(dateToLoad)
+    console.log('Loaded instructors:', instructors.value.length)
+  } catch (err: any) {
+    console.error('Failed to load instructors:', err)
+    error.value = '加载教练列表失败，请重试'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Load time slots for selected instructor and date
+async function loadTimeSlots() {
+  if (!selectedInstructorId.value || !selectedDate.value) {
+    console.log('⚠️ loadTimeSlots: missing data - instructorId:', selectedInstructorId.value, 'date:', selectedDate.value)
+    return
+  }
+  
+  loading.value = true
+  error.value = null
+  
+  try {
+    timeSlots.value = await scheduleApi.getAvailableSlots(
+      selectedDate.value,
+      selectedInstructorId.value
+    )
+    console.log('✅ Loaded time slots:', timeSlots.value.length)
+    if (timeSlots.value.length > 0) {
+      console.log('📋 First slot data:', timeSlots.value[0])
+      console.log('🔢 available_spots type:', typeof timeSlots.value[0].available_spots)
+      console.log('✓ Available slots count:', timeSlots.value.filter(s => isSlotAvailable(s)).length)
+    }
+  } catch (err: any) {
+    console.error('❌ Failed to load time slots:', err)
+    error.value = '加载时间段失败，请重试'
+  } finally {
+    loading.value = false
+  }
+}
+
+// Helper functions for time slot handling
+function formatTime(timeStr: string): string {
+  // Convert "HH:MM:SS" to "HH:MM"
+  if (!timeStr) return ''
+  const parts = timeStr.split(':')
+  if (parts.length >= 2) {
+    return `${parts[0]}:${parts[1]}`
+  }
+  return timeStr
+}
+
+function isSlotSelected(slot: any): boolean {
+  if (!selectedTimeSlot.value) return false
+  // Compare using formatted times to handle "HH:MM:SS" vs "HH:MM"
+  return formatTime(selectedTimeSlot.value.start) === formatTime(slot.start_time) &&
+         formatTime(selectedTimeSlot.value.end) === formatTime(slot.end_time)
+}
+
+function isSlotAvailable(slot: any): boolean {
+  // Handle various data types for available_spots (string, number, etc.)
+  let spots = 0
+  if (slot.available_spots !== undefined && slot.available_spots !== null) {
+    // Convert to number regardless of input type (handles string like "1")
+    spots = parseInt(String(slot.available_spots), 10)
+  }
+  return !isNaN(spots) && spots > 0
+}
+
+function handleSlotClick(slot: any) {
+  console.log('🕐 Slot clicked:', slot)
+  console.log('Available spots:', slot.available_spots, typeof slot.available_spots)
+  console.log('Is available?', isSlotAvailable(slot))
+  
+  if (!isSlotAvailable(slot)) {
+    alert('该时段已约满，请选择其他时间')
+    return
+  }
+  // Store the full time string from API (with seconds)
+  selectedTimeSlot.value = { 
+    start: slot.start_time, 
+    end: slot.end_time,
+    scheduleId: slot.id  // Also store ID for easier lookup
+  }
+  console.log('✅ Selected:', selectedTimeSlot.value)
+}
+
+// Override nextStep to trigger data loading
+async function nextStep() {
+  console.log('🔽 nextStep called - from step:', currentStep.value)
+  
+  if (currentStep.value === 1 && !selectedDate.value) return alert('请选择日期')
+  if (currentStep.value === 2 && !selectedInstructorId.value) return alert('请选择教练')
+  if (currentStep.value === 3 && !selectedTimeSlot.value) return alert('请选择时间段')
+  
+  // Load data when moving to next step
+  if (currentStep.value === 1) {
+    console.log('👨‍🏫 Loading instructors for date:', selectedDate.value)
+    await loadInstructors()
+  } else if (currentStep.value === 2) {
+    console.log('⏰ Loading time slots for instructor:', selectedInstructorId.value, 'date:', selectedDate.value)
+    await loadTimeSlots()
+  }
+  
+  currentStep.value++
+  console.log('➡️ Moved to step:', currentStep.value)
+}
 </script>
 
 <template>
@@ -120,19 +268,33 @@ function loadTimeSlots() { return [] as any[] }
         
         <p class="mb-4 text-gray-600">预约日期：{{ selectedDate }}</p>
         
-        <!-- Placeholder for now - TODO: Connect to API -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <!-- Loading state -->
+        <div v-if="loading" class="text-center py-8">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-dark mx-auto"></div>
+          <p class="mt-4 text-gray-600">加载中...</p>
+        </div>
+        
+        <!-- Error state -->
+        <div v-else-if="error" class="bg-red-50 text-red-700 p-4 rounded-lg text-center">
+          {{ error }}
+        </div>
+        
+        <!-- Instructor list from API -->
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <InstructorCard 
-            v-for="i in 3" 
-            :key="i"
-            :instructor="{ id: i, name: ['张伟', '李娜', '王强'][i-1], bio: '资深瑜伽教练，拥有 5+ 年教学经验，擅长流瑜伽和阴瑜伽' }"
-            :selected="selectedInstructorId === i"
-            @click="selectedInstructorId = i"
+            v-for="instructor in instructors" 
+            :key="instructor.id"
+            :instructor="{ id: instructor.id, name: instructor.name, bio: instructor.description }"
+            :selected="selectedInstructorId === instructor.id"
+            @click="selectedInstructorId = instructor.id"
           />
         </div>
 
-        <p v-if="!selectedInstructorId" class="text-center text-gray-500 py-8">
-          📝 请选择一位教练继续预约流程
+        <p v-if="!loading && !error && instructors.length === 0" class="text-center text-gray-500 py-8">
+          📝 该日期暂无可用教练
+        </p>
+        <p v-else-if="!loading && !error && instructors.every(i => i.available_slots?.length === 0)" class="text-center text-gray-500 py-8">
+          📝 该日期所有时段均已约满
         </p>
       </div>
 
@@ -141,37 +303,45 @@ function loadTimeSlots() { return [] as any[] }
         <h2 class="text-xl font-semibold text-primary-700 mb-4">⏰ 选择时间段</h2>
         
         <p class="mb-4 text-gray-600">
-          教练：{{ selectedInstructorId || '未选择' }} | 日期：{{ selectedDate }}
+          教练：{{ instructors.find(i => i.id === selectedInstructorId)?.name || '未选择' }} | 日期：{{ selectedDate }}
         </p>
 
-        <!-- Placeholder time slots - TODO: Connect to API -->
-        <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mb-4">
+        <!-- Loading state -->
+        <div v-if="loading" class="text-center py-8">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-dark mx-auto"></div>
+          <p class="mt-4 text-gray-600">加载中...</p>
+        </div>
+        
+        <!-- Error state -->
+        <div v-else-if="error" class="bg-red-50 text-red-700 p-4 rounded-lg text-center">
+          {{ error }}
+        </div>
+
+        <!-- Time slots from API -->
+        <div v-else class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 mb-4">
           <button
-            v-for="slot in [
-              { start_time: '08:00', end_time: '09:00', duration_minutes: 60, available: true },
-              { start_time: '10:00', end_time: '11:00', duration_minutes: 60, available: true },
-              { start_time: '14:00', end_time: '15:00', duration_minutes: 60, available: false },
-              { start_time: '16:00', end_time: '17:00', duration_minutes: 60, available: true },
-              { start_time: '19:00', end_time: '20:30', duration_minutes: 90, available: true }
-            ]"
-            :key="slot.start_time"
-            @click="selectedTimeSlot = { start: slot.start_time, end: slot.end_time }"
-            class="p-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium min-h-[70px] flex flex-col items-center justify-center"
+            v-for="slot in timeSlots" 
+            :key="slot.id"
+            @click="handleSlotClick(slot)"
+            class="p-3 rounded-lg border-2 transition-all duration-200 text-sm font-medium min-h-[70px] flex flex-col items-center justify-center relative"
             :class="[
-              selectedTimeSlot?.start === slot.start_time 
-                ? 'border-accent-dark bg-accent-light text-accent-dark shadow-md scale-105' 
-                : 'border-primary-200 hover:border-accent-green hover:bg-primary-50',
-              !slot.available ? 'opacity-40 cursor-not-allowed bg-gray-100' : 'cursor-pointer'
+              isSlotSelected(slot)
+                ? 'border-accent-dark bg-accent-light text-accent-dark shadow-md scale-105 cursor-pointer' 
+                : !isSlotAvailable(slot)
+                  ? 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed opacity-60'
+                  : 'border-primary-200 hover:border-accent-green hover:bg-primary-50 cursor-pointer',
             ]"
-            :disabled="!slot.available"
           >
-            <div class="font-bold">{{ slot.start_time }}</div>
-            <div class="text-xs text-gray-600 mt-1">({{ slot.duration_minutes }}分钟)</div>
-            <div v-if="!slot.available" class="absolute inset-0 flex items-center justify-center">
-              <span class="text-lg opacity-50">✗</span>
+            <div class="font-bold">{{ formatTime(slot.start_time) }}</div>
+            <div class="text-xs text-gray-600 mt-1">
+              {{ isSlotAvailable(slot) ? '剩 ' + slot.available_spots + ' 位' : '已满' }}
             </div>
           </button>
         </div>
+
+        <p v-if="!loading && !error && timeSlots.length === 0" class="text-center text-gray-500 py-8">
+          📝 该教练在所选日期暂无可用时段
+        </p>
       </div>
 
       <!-- Step 4: Customer Information Form -->
