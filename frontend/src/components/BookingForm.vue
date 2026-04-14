@@ -24,20 +24,20 @@ const formData = ref({
 })
 
 // Validation errors
-const errors = {
-  name: computed(() => !formData.value.name.trim() ? '请输入姓名' : ''),
-  phone: computed(() => {
-    if (!formData.value.phone) return '请输入联系电话'
-    const pattern = /^1[3-9]\d{9}$/
-    return pattern.test(formData.value.phone) ? '' : '请输入有效的手机号码（11 位）'
-  })
+const errorName = computed(() => !formData.value.name.trim() ? '请输入姓名' : '')
+const errorPhone = computed(() => {
+  if (!formData.value.phone) return '请输入联系电话'
+  const pattern = /^1[3-9]\d{9}$/
+  // Remove spaces for validation
+  const digits = formData.value.phone.replace(/\s/g, '')
+  return pattern.test(digits) ? '' : '请输入有效的手机号码（11 位）'
 })
 
 // Form validity
 const isFormValid = computed(() => {
   return formData.value.name.trim() && 
-         !errors.value.name && 
-         !errors.value.phone
+         !errorName.value && 
+         !errorPhone.value
 })
 
 function updateField(field: keyof typeof formData.value, value: string) {
@@ -59,12 +59,20 @@ function handleSubmit() {
 }
 
 // Format phone number with spaces for readability (e.g., 138 0000 0000)
-function formatPhone(value: string) {
+function formatPhone(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 11)
   
   if (digits.length <= 3) return digits
   if (digits.length <= 7) return `${digits.slice(0, 3)} ${digits.slice(3)}`
   return `${digits.slice(0, 3)} ${digits.slice(3, 7)} ${digits.slice(7)}`
+}
+
+// Handle phone input with formatting and update emission
+function handlePhoneInput(event: Event) {
+  const target = event.target as HTMLInputElement
+  const raw = target.value.replace(/\s/g, '')
+  formData.value.phone = formatPhone(raw)
+  updateField('phone', formData.value.phone)
 }
 </script>
 
@@ -82,12 +90,12 @@ function formatPhone(value: string) {
         placeholder="请输入您的真实姓名"
         :class="[
           'w-full px-4 py-3 rounded-lg border-2 transition-all duration-200',
-          errors.name ? 'border-red-400 focus:ring-2 focus:ring-red-200' 
+          errorName ? 'border-red-400 focus:ring-2 focus:ring-red-200' 
                      : 'border-primary-300 focus:border-accent-green focus:ring-2 focus:ring-accent-light'
         ]"
       />
-      <p v-if="errors.name" class="mt-1 text-sm text-red-600 flex items-center">
-        ⚠️ {{ errors.name }}
+      <p v-if="errorName" class="mt-1 text-sm text-red-600 flex items-center">
+        ⚠️ {{ errorName }}
       </p>
     </div>
 
@@ -99,21 +107,17 @@ function formatPhone(value: string) {
       <input 
         type="tel" 
         v-model="formData.phone"
-        @input="{
-          const raw = $event.target.value.replace(/\s/g, '')
-          formData.phone = formatPhone(raw)
-          updateField('phone', formData.phone)
-        }"
+        @input="handlePhoneInput($event)"
         placeholder="请输入 11 位手机号码"
         maxlength="13"
         :class="[
           'w-full px-4 py-3 rounded-lg border-2 transition-all duration-200',
-          errors.phone ? 'border-red-400 focus:ring-2 focus:ring-red-200' 
+          errorPhone ? 'border-red-400 focus:ring-2 focus:ring-red-200' 
                       : 'border-primary-300 focus:border-accent-green focus:ring-2 focus:ring-accent-light'
         ]"
       />
-      <p v-if="errors.phone" class="mt-1 text-sm text-red-600 flex items-center">
-        ⚠️ {{ errors.phone }}
+      <p v-if="errorPhone" class="mt-1 text-sm text-red-600 flex items-center">
+        ⚠️ {{ errorPhone }}
       </p>
       <p class="mt-1 text-xs text-gray-500">
         ℹ️ 预约成功后将发送短信通知到该手机
