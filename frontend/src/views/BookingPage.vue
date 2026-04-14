@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import InstructorCard from '../components/InstructorCard.vue'
+import BookingForm from '../components/BookingForm.vue'
 import { instructorApi, scheduleApi, bookingApi } from '../api/services'
 
 const router = useRouter()
@@ -360,10 +361,9 @@ async function nextStep() {
         <!-- Use BookingForm component -->
         <BookingForm 
           @submit="submitBooking"
-          :customer-name="customerName"
-          :customer-phone="customerPhone"
-          :customer-note="customerNote"
-          @update="(data) => { customerName = data.name; customerPhone = data.phone; customerNote = data.note }"
+          v-model:name="customerName.value"
+          v-model:phone="customerPhone.value"
+          v-model:note="customerNote.value"
         />
       </div>
 

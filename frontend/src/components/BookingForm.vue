@@ -2,21 +2,25 @@
 import { ref, computed } from 'vue'
 
 const props = defineProps<{
-  customerName?: string
-  customerPhone?: string
-  customerNote?: string
+  modelValue?: string  // For v-model compatibility (name)
+  name?: string
+  phone?: string
+  note?: string
 }>()
 
 const emit = defineEmits<{
-  update: [data: { name: string; phone: string; note: string }]
+  'update:modelValue': [value: string]
+  'update:name': [value: string]
+  'update:phone': [value: string]
+  'update:note': [value: string]
   submit: []
 }>()
 
 // Local form state
 const formData = ref({
-  name: props.customerName || '',
-  phone: props.customerPhone || '',
-  note: props.customerNote || ''
+  name: props.name || props.modelValue || '',
+  phone: props.phone || '',
+  note: props.note || ''
 })
 
 // Validation errors
@@ -39,12 +43,10 @@ const isFormValid = computed(() => {
 function updateField(field: keyof typeof formData.value, value: string) {
   formData.value[field] = value
   
-  // Emit update event
-  emit('update', {
-    name: formData.value.name,
-    phone: formData.value.phone,
-    note: formData.value.note
-  })
+  // Emit specific v-model updates
+  if (field === 'name') emit('update:name', value)
+  if (field === 'phone') emit('update:phone', value)
+  if (field === 'note') emit('update:note', value)
 }
 
 function handleSubmit() {
@@ -76,7 +78,7 @@ function formatPhone(value: string) {
       <input 
         type="text" 
         v-model="formData.name"
-        @input="$event.target.value = $event.target.value.trim()"
+        @input="$event.target.value = $event.target.value.trim(); updateField('name', formData.value.name)"
         placeholder="请输入您的真实姓名"
         :class="[
           'w-full px-4 py-3 rounded-lg border-2 transition-all duration-200',
@@ -97,7 +99,11 @@ function formatPhone(value: string) {
       <input 
         type="tel" 
         v-model="formData.phone"
-        @input="$event.target.value = formatPhone($event.target.value.replace(/\s/g, ''))"
+        @input="{
+          const raw = $event.target.value.replace(/\s/g, '')
+          formData.phone = formatPhone(raw)
+          updateField('phone', formData.phone)
+        }"
         placeholder="请输入 11 位手机号码"
         maxlength="13"
         :class="[
