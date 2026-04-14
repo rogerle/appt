@@ -88,9 +88,18 @@ async def create_booking(
             detail="Time slot not found or unavailable"
         )
     
+    # Get phone number (supports both 'phone' and 'customer_phone')
+    try:
+        customer_phone = booking_data.get_phone
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e)
+        )
+    
     # Check for double-booking by same customer
     existing_booking_id = check_booking_conflict(db, booking_data.schedule_id, 
-                                                  booking_data.customer_phone)
+                                                  customer_phone)
     if existing_booking_id:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -110,7 +119,7 @@ async def create_booking(
     db_booking = Booking(
         schedule_id=booking_data.schedule_id,
         customer_name=booking_data.customer_name,
-        customer_phone=booking_data.customer_phone,
+        customer_phone=customer_phone,  # Use normalized phone value
         notes=booking_data.notes,
         status='confirmed'
     )

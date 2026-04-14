@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 const props = defineProps<{
   modelValue?: string  // For v-model compatibility (name)
@@ -13,7 +13,7 @@ const emit = defineEmits<{
   'update:name': [value: string]
   'update:phone': [value: string]
   'update:note': [value: string]
-  submit: []
+  submit: [name: string, phone: string, note: string]
 }>()
 
 // Local form state
@@ -21,6 +21,25 @@ const formData = ref({
   name: props.name || props.modelValue || '',
   phone: props.phone || '',
   note: props.note || ''
+})
+
+// Watch for props changes to update local form data
+watch(() => props.name, (newValue) => {
+  if (newValue !== undefined) {
+    formData.value.name = newValue
+  }
+})
+
+watch(() => props.phone, (newValue) => {
+  if (newValue !== undefined) {
+    formData.value.phone = newValue
+  }
+})
+
+watch(() => props.note, (newValue) => {
+  if (newValue !== undefined) {
+    formData.value.note = newValue
+  }
 })
 
 // Validation errors
@@ -51,10 +70,10 @@ function updateField(field: keyof typeof formData.value, value: string) {
 
 function handleSubmit() {
   if (isFormValid.value) {
-    emit('submit')
+    // Emit submit with form data
+    emit('submit', formData.value.name, formData.value.phone, formData.value.note)
   } else {
-    // Trigger validation on all fields
-    Object.keys(errors).forEach(() => {})
+    alert('请填写完整信息')
   }
 }
 
@@ -86,7 +105,7 @@ function handlePhoneInput(event: Event) {
       <input 
         type="text" 
         v-model="formData.name"
-        @input="$event.target.value = $event.target.value.trim(); updateField('name', formData.value.name)"
+        @input="formData.name = formData.name.trim()"
         placeholder="请输入您的真实姓名"
         :class="[
           'w-full px-4 py-3 rounded-lg border-2 transition-all duration-200',
@@ -131,7 +150,6 @@ function handlePhoneInput(event: Event) {
       </label>
       <textarea 
         v-model="formData.note"
-        @input="updateField('note', $event.target.value)"
         placeholder="如有特殊需求、身体状况或疑问，请在此留言..."
         rows="4"
         class="w-full px-4 py-3 rounded-lg border-2 border-primary-300 focus:border-accent-green focus:ring-2 focus:ring-accent-light transition-all duration-200 resize-none"

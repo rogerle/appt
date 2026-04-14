@@ -15,7 +15,23 @@ class BookingBase(BaseModel):
     
     schedule_id: int = Field(..., gt=0, description="Schedule slot ID to book")
     customer_name: str = Field(..., min_length=2, max_length=50, description="Customer full name")
-    customer_phone: str = Field(..., pattern=r'^\d{11}$', description="Phone number (11 digits)")
+    
+    # Support both 'phone' (frontend) and 'customer_phone' (backend) field names
+    phone: Optional[str] = Field(None, pattern=r'^\d{11}$', alias="customer_phone", description="Phone number (11 digits)")
+    customer_phone: Optional[str] = None  # For backward compatibility
+    
+    model_config = {
+        "populate_by_name": True  # Allow both field name and alias
+    }
+    
+    @property
+    def get_phone(self) -> str:
+        """Get phone number, preferring 'phone' field for frontend compatibility."""
+        if self.phone:
+            return self.phone
+        elif self.customer_phone:
+            return self.customer_phone
+        raise ValueError("Phone number is required (use either 'phone' or 'customer_phone')")
 
 
 class BookingCreate(BookingBase):

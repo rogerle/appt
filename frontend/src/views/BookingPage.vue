@@ -44,10 +44,17 @@ function prevStep() {
   if (currentStep.value > 1) currentStep.value--
 }
 
-async function submitBooking() {
-  if (!customerName.value || !customerPhone.value) {
+async function submitBooking(name?: string, phone?: string, note?: string) {
+  // Use passed values or fallback to refs
+  const finalName = name || customerName.value
+  const finalPhone = phone || customerPhone.value
+  const finalNote = note || customerNote.value
+  
+  if (!finalName || !finalPhone) {
     return alert('请填写姓名和电话')
   }
+  
+  console.log('📝 Submitting booking:', { name: finalName, phone: finalPhone, note: finalNote })
   
   // Use the stored schedule ID directly, or find from timeSlots
   let scheduleId: number | undefined
@@ -74,9 +81,9 @@ async function submitBooking() {
   try {
     const response = await bookingApi.createBooking({
       schedule_id: scheduleId,
-      customer_name: customerName.value,
-      customer_phone: customerPhone.value,
-      notes: customerNote.value || undefined
+      customer_name: finalName,
+      customer_phone: finalPhone,
+      notes: finalNote || undefined
     })
     
     alert(response.message || '预约成功！')
@@ -360,10 +367,10 @@ async function nextStep() {
 
         <!-- Use BookingForm component -->
         <BookingForm 
-          @submit="submitBooking"
-          v-model:name="customerName.value"
-          v-model:phone="customerPhone.value"
-          v-model:note="customerNote.value"
+          @submit="(name, phone, note) => submitBooking(name, phone, note)"
+          v-model:name="customerName"
+          v-model:phone="customerPhone"
+          v-model:note="customerNote"
         />
       </div>
 
