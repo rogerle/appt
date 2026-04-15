@@ -29,21 +29,25 @@ class ScheduleCreate(ScheduleBase):
 class ScheduleUpdate(BaseModel):
     """Request model for updating an existing schedule (all fields optional)."""
     
+    instructor_id: Optional[int] = Field(None, gt=0)
     start_time: Optional[time] = None
     end_time: Optional[time] = None
-    max_bookings: Optional[int] = Field(None, gt=0)
+    max_bookings: Optional[int] = Field(None, ge=0)
     is_recurring: Optional[bool] = None
 
 
 class ScheduleResponse(BaseModel):
-    """Response model for schedule data (public-facing)."""
+    """Response model for schedule data (includes admin details)."""
     
-    id: int = Field(..., description="Schedule unique identifier")
-    instructor_id: int = Field(..., description="Associated instructor ID")
-    start_time: time = Field(..., description="Start time")
-    end_time: time = Field(..., description="End time")
-    max_bookings: int = Field(..., description="Maximum capacity")
-    available_spots: int = Field(..., description="Remaining available spots")
+    id: int = Field(..., description="课程 ID")
+    instructor_id: int = Field(..., description="教练 ID")
+    instructor_name: str = Field(..., description="教练姓名")  # Denormalized for display
+    schedule_date: str = Field(..., description="日期 (ISO format YYYY-MM-DD)")
+    start_time: str = Field(..., description="开始时间 (HH:MM)")
+    end_time: str = Field(..., description="结束时间 (HH:MM)")
+    max_bookings: int = Field(..., ge=0, description="容纳人数")
+    available_spots: int = Field(..., ge=0, description="可用名额")
+    booking_count: int = Field(default=0, ge=0, description="已预约数")
 
 
 class ScheduleSlotResponse(BaseModel):

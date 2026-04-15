@@ -32,7 +32,7 @@ services:
       DATABASE_URL: postgresql://appt_user:change_me_in_production@postgres:5432/appt
       FASTAPI_ENV: development
       SECRET_KEY: change_this_to_a_random_512bit_key
-      ADMIN_PASSWORD: admin_password_change_me
+      ADMIN_PASSWORD: admin123
     ports:
       - "8000:8000"
     depends_on:

@@ -9,12 +9,14 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
 from app.core.config import settings
 from app.api.v1.auth import router as auth_router
 from app.api.v1.instructors import router as instructors_router
 from app.api.v1.schedules import router as schedules_router
 from app.api.v1.bookings import router as bookings_router
+from app.api.v1.admin import admin_router
 
 
 # Configure logging
@@ -26,13 +28,30 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
+@asynccontextmanager  
 async def lifespan(app: FastAPI):
     """Application lifecycle management."""
     
     # Startup events
     logger.info("🚀 Appt Backend is starting...")
     logger.info(f"Environment: {settings.ENVIRONMENT}")
+    
+    # Create all tables if they don't exist (includes new User table)
+    try:
+        from app.db.database import db_manager
+        from app.db.models import (
+            Studio, Instructor, Schedule, Booking, User  # Import all models to register with Base
+        )
+        
+        # Create tables using SQLAlchemy
+        from app.db.database import Base
+        with db_manager.engine.connect() as conn:
+            conn.execute(text("SELECT 1"))  # Test connection
+        Base.metadata.create_all(bind=db_manager.engine)
+        logger.info("✅ Database tables created/verified (including User table)")
+    except Exception as e:
+        logger.error(f"⚠️ Table creation warning: {e}")
+        logger.warning("Database may already have tables, or connection issue occurred")
     
     yield
     
@@ -54,9 +73,10 @@ app = FastAPI(
 )
 
 # Add CORS middleware (Cross-Origin Resource Sharing)
+# Set to frontend origin for development/testing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS or ["http://localhost:8080"],
+    allow_origins=["http://localhost:8080", "http://127.0.0.1:8080"],  # Explicitly set frontend URL
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, etc.)
     allow_headers=["*"],  # Allow all headers
@@ -68,6 +88,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(instructors_router, prefix="/api/v1")
 app.include_router(schedules_router, prefix="/api/v1")
 app.include_router(bookings_router, prefix="/api/v1")
+app.include_router(admin_router, prefix="/api/v1")  # Admin routes require auth
 
 
 @app.get("/health", tags=["Health Check"])

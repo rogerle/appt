@@ -79,10 +79,13 @@ async function submitBooking(name?: string, phone?: string, note?: string) {
   error.value = null
   
   try {
+    // Remove spaces from phone number before submission
+    const cleanedPhone = finalPhone.replace(/\s/g, '')
+    
     const response = await bookingApi.createBooking({
       schedule_id: scheduleId,
       customer_name: finalName,
-      customer_phone: finalPhone,
+      customer_phone: cleanedPhone,
       notes: finalNote || undefined
     })
     

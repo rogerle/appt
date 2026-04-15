@@ -25,11 +25,14 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy.orm import Session
 
+from app.core.security import hash_password
+from app.core.config import settings
 from app.db.database import DatabaseManager, init_db
 from app.db.models.studio import Studio
 from app.db.models.instructor import Instructor
 from app.db.models.schedule import Schedule
 from app.db.models.booking import Booking
+from app.db.models.user import User
 # Use string literal instead of enum
 BOOKING_STATUS_CONFIRMED = 'confirmed'
 
@@ -200,6 +203,42 @@ def create_sample_bookings(session: Session, schedules: list[Schedule]) -> int:
     return created_count
 
 
+def create_admin_user(session: Session) -> User:
+    """Create initial admin user if not exists."""
+    
+    # Check if admin already exists
+    existing_admin = session.query(User).filter(
+        (User.email == "admin@appt.local") |
+        (User.username == "admin")
+    ).first()
+    
+    if existing_admin:
+        print(f"✓ Admin user already exists: {existing_admin.username}")
+        return existing_admin
+    
+    # Get admin password from environment variable or use default
+    admin_password = getattr(settings, 'ADMIN_PASSWORD', 'admin123456')
+    
+    # Create new admin with hashed password
+    admin = User(
+        email="admin@appt.local",
+        username="admin",
+        hashed_password=hash_password(admin_password),
+        role="admin",
+        is_active=True
+    )
+    
+    session.add(admin)
+    session.commit()
+    session.refresh(admin)
+    
+    print(f"✓ Created admin user: {admin.username}")
+    print(f"  Email: admin@appt.local")
+    print(f"  Password: {admin_password}")
+    print(f"  Role: {admin.role}")
+    return admin
+
+
 def main():
     """Main seed function."""
     
@@ -238,18 +277,26 @@ def main():
         print(f"   Total schedule slots now: {total_schedules}")
         print()
         
-        # Step 4: Create sample bookings
-        print("📝 Step 4/5: Creating sample bookings...")
+        # Step 4: Create admin user
+        print("🔐 Step 4/6: Creating admin user...")
+        create_admin_user(session)
+        total_users = session.query(User).count()
+        print(f"   Total users: {total_users}")
+        print()
+        
+        # Step 5: Create sample bookings
+        print("📝 Step 5/6: Creating sample bookings...")
         create_sample_bookings(session, all_schedules)
         print()
         
-        # Step 5: Summary statistics
-        print("📊 Step 5/5: Database Statistics")
+        # Step 6: Summary statistics
+        print("📊 Step 6/6: Database Statistics")
         print("-" * 40)
         print(f"   Studios:        {session.query(Studio).count()}")
         print(f"   Instructors:    {session.query(Instructor).count()}")
         print(f"   Schedules:      {session.query(Schedule).count()}")
         print(f"   Bookings:       {session.query(Booking).count()}")
+        print(f"   Users:          {total_users}")
         print("-" * 40)
         
     except Exception as e:

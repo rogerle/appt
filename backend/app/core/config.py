@@ -38,9 +38,9 @@ class Settings(BaseSettings):
     CORS_ALLOW_METHODS: List[str] = ["*"]
     CORS_ALLOW_HEADERS: List[str] = ["*"]
     
-    # Admin settings (for first-time setup)
+    # Admin settings (for first-time setup) 
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str  # Will be loaded from env
+    ADMIN_PASSWORD: str = "admin1234567890"  # Short enough for bcrypt
     
     # Logging
     LOG_LEVEL: str = "INFO"

@@ -1,116 +1,176 @@
-"""
-Authentication API Endpoints - Login, Register, Token Management
+"""Authentication Endpoints - User Registration & Login"""
 
-Provides JWT-based authentication for studio owners.
-Includes password hashing and token validation.
-"""
+from datetime import timedelta
+from typing import Optional
 
-from datetime import datetime, timedelta
-from typing import Annotated
-
-import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.core.security import (
+    create_access_token, 
+    hash_password, 
+    verify_password, 
+    get_current_user as get_current_user_from_token
+)
 from app.db.database import get_db
-from app.schemas.auth import (
-    LoginRequest, 
-    RegisterRequest, 
-    TokenResponse,
-    UserResponse
-)
+from app.db.models.user import User
+from app.schemas.user import TokenResponse, UserCreate, UserLogin, UserResponse
 
-# JWT configuration
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
-
-router = APIRouter(
-    prefix="/auth",
-    tags=["Authentication"],
-)
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify password against bcrypt hash."""
-    return bcrypt.checkpw(plain_password.encode(), hashed_password.encode())
-
-
-def get_password_hash(password: str) -> str:
-    """Generate bcrypt hash for password."""
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-
-
-@router.post("/login", response_model=TokenResponse, summary="User login")
-async def login(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
-    db: Session = Depends(get_db)
-):
-    """Authenticate user and return JWT token."""
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    """
+    注册用户并返回 JWT token
     
-    # For now, use hardcoded admin credentials (will be replaced with DB lookup)
-    username = settings.ADMIN_USERNAME
-    stored_hash = getattr(settings, '_password_hash', None)
+    - **email**: 用户邮箱（唯一标识）
+    - **username**: 用户名（3-100 字符，唯一）
+    - **password**: 密码（至少 8 个字符，bcrypt 加密存储）
     
-    if not stored_hash:
-        stored_hash = get_password_hash(settings.ADMIN_PASSWORD)
-        settings._password_hash = stored_hash
+    Returns:
+        - access_token: JWT token for API authentication
+        - token_type: Always "bearer"
+        
+    Raises:
+        - HTTP 400: Email already registered
+        - HTTP 422: Validation errors (invalid email, weak password)
+    """
+    # Check if email already exists
+    existing_user = db.query(User).filter(
+        (User.email == user_data.email) | 
+        (User.username == user_data.username)
+    ).first()
     
-    if form_data.username != username or not verify_password(form_data.password, stored_hash):
+    if existing_user:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="邮箱或用户名已被注册"
+        )
+    
+    # Create new user with hashed password and default role='user'
+    db_user = User(
+        email=user_data.email,
+        username=user_data.username,
+        hashed_password=hash_password(user_data.password),
+        role="user",  # Default to regular user (not admin)
+        is_active=True
+    )
+    
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    
+    # Generate JWT token for auto-login after registration
+    access_token = create_access_token(
+        data={"sub": db_user.email},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    
+    return TokenResponse(access_token=access_token, token_type="bearer")
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(credentials: UserLogin, db: Session = Depends(get_db)):
+    """
+    用户登录并返回 JWT token
+    
+    - **email**: 注册时使用的邮箱地址
+    - **password**: 密码（bcrypt 验证）
+    
+    Returns:
+        - access_token: JWT token for API authentication  
+        - token_type: Always "bearer"
+        
+    Raises:
+        - HTTP 401: Invalid email or password
+        
+    Example Request:
+        ```bash
+        curl -X POST http://localhost:8000/api/v1/auth/login \\
+          -H "Content-Type: application/json" \\
+          -d '{"email": "admin@appt.local", "password": "your_password"}'
+        ```
+    """
+    # Find user by email
+    user = db.query(User).filter(User.email == credentials.email).first()
+    
+    if not user or not verify_password(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
+            detail="邮箱或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
-    # Create JWT token (simplified - use python-jose in production)
-    from app.core.security import create_access_token
+    # Check if account is active  
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="账户已被禁用，请联系管理员"
+        )
     
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    # Generate JWT token with email in 'sub' field
     access_token = create_access_token(
-        data={"username": username, "user_id": 1},
-        expires_delta=access_token_expires
+        data={"sub": user.email},
+        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    )
+    return TokenResponse(access_token=access_token, token_type="bearer")
 
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED, 
-             summary="Register new studio owner")
-async def register(
-    request: RegisterRequest,
-    db: Session = Depends(get_db)
-):
-    """Register a new yoga studio and owner account."""
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_info(current_user: User = Depends(get_current_user_from_token)):
+    """
+    获取当前登录用户信息
     
-    # TODO: Implement actual registration with database storage
-    # For now, return mock response
-    
-    hashed_password = get_password_hash(request.password)
-    
+    Requires valid JWT token in Authorization header:
+        Authorization: Bearer <your_access_token>
+        
+    Returns:
+        - id: User ID
+        - email: Email address
+        - username: Username  
+        - role: user/admin
+        - is_active: Account status
+        
+    Raises:
+        - HTTP 401: Invalid or missing token
+    """
+    # current_user is injected by get_current_user_from_token dependency
     return UserResponse(
-        id=1,  # Mock ID
-        username=request.phone,
-        studio_name=request.studio_name,
-        phone=request.phone
+        id=current_user.id,
+        email=current_user.email,
+        username=current_user.username,
+        role=current_user.role,
+        is_active=current_user.is_active
     )
 
 
-@router.get("/me", response_model=UserResponse, summary="Get current user info")
-async def get_current_user_info(
-    token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
-):
-    """Retrieve information about the currently authenticated user."""
+@router.post("/logout")
+async def logout(current_user: User = Depends(get_current_user_from_token)):
+    """
+    用户登出（前端清除 token）
     
-    # TODO: Validate JWT token and return user data from database
-    return UserResponse(
-        id=1,
-        username=settings.ADMIN_USERNAME,
-        studio_name="阳光瑜伽馆",  # Mock data
-        phone="13800138000"
-    )
+    Note: JWT tokens are stateless. This endpoint exists for audit/logging purposes only.
+    The frontend should remove the access_token from localStorage/cookies after calling this.
+    
+    Returns:
+        {"detail": "Successfully logged out"}
+        
+    Frontend Implementation:
+        ```javascript
+        // Call logout API (optional, for server-side logging)
+        await apiClient.post('/auth/logout')
+        
+        // CRITICAL: Clear token from storage  
+        localStorage.removeItem('access_token')
+        
+        // Redirect to login page or homepage
+        window.location.href = '/'
+        ```
+    """
+    # Token is stateless, but we can add server-side logout logic here if needed
+    # e.g., token blacklist, session invalidation
+    
+    return {"detail": "已成功登出"}

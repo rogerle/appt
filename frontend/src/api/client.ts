@@ -12,7 +12,7 @@ const apiClient = axios.create({
 // Request interceptor - Add auth token to requests
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token')
+    const token = localStorage.getItem('access_token')
     
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`
@@ -31,7 +31,7 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid - logout user
-      localStorage.removeItem('auth_token')
+      localStorage.removeItem('access_token')
       window.location.href = '/login'
     } else if (error.response?.status === 409 && error.config?.url?.includes('/bookings')) {
       // Handle booking conflicts gracefully
