@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>🎯 最终测试 - Appt Admin Dashboard</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
+        h1 { color: #667eea; text-align: center; margin-bottom: 30px; }
+        .status-box { background: #f8f9fa; border-left: 4px solid #667eea; padding: 15px; margin: 15px 0; border-radius: 4px; }
+        .success { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+        button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 30px; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 10px 5px; transition: transform 0.2s; }
+        button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102,126,234,0.4); }
+        pre { background: #f1f3f5; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 12px; max-height: 400px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Appt Admin Dashboard - Final Test</h1>
+        
+        <div class="status-box" id="system-info">
+            <strong>系统信息:</strong> 
+            <span id="timestamp"></span><br>
+            当前 URL: <a href="#" id="current-url" target="_blank">Loading...</a>
+        </div>
+
+        <button onclick="testFiles()">📁 检查文件 (New Build)</button>
+        <button onclick="testLogin()">🔐 测试登录</button>
+        <button onclick="checkRouter()">🛣️ 检查路由守卫</button>
+        <button onclick="goToAdmin()" style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);">✅ 直接访问管理后台</button>
+
+        <div class="status-box" id="results" style="margin-top: 30px;">
+            <h3>📊 测试结果：</h3>
+            <pre id="result-text"></pre>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        document.getElementById('current-url').href = window.location.href;
+        
+        const results = [];
+        function addResult(text, type) {
+            results.push(`<strong>[${new Date().toLocaleTimeString()}]</strong> ${text}`);
+            document.getElementById('result-text').innerHTML = results.join('<br>');
+        }
+
+        // Test files exist
+        async function testFiles() {
+            addResult("🔍 Checking new build files...", "info");
+            
+            const files = [
+                '/assets/index-DYN-e3_j.js?v=' + Date.now(),
+                '/assets/AdminLayout-BKjO4gCP.css?v=' + Date.now(),
+                '/assets/Dashboard-8gJfOHVw.js?v=' + Date.now()
+            ];
+            
+            for (const url of files) {
+                try {
+                    const res = await fetch(url, { method: 'HEAD' });
+                    addResult(`${res.status === 200 ? '✅' : '❌'} ${url.split('/').pop()} (${res.status})`, 
+                        res.status === 200 ? 'success' : 'error');
+                } catch (e) {
+                    addResult(`❌ Error: ${e.message}`, "error");
+                }
+            }
+        }
+
+        // Test login
+        async function testLogin() {
+            addResult("🔐 Testing login...", "info");
+            
+            try {
+                const res = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email:'admin@appt.com', password:'admin123'})
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('access_token', data.access_token);
+                    addResult(`✅ Login successful! Token received.`, "success");
+                    
+                    // Check user info
+                    const userInfoRes = await fetch('http://localhost:8000/api/v1/auth/me', {
+                        headers: {'Authorization': `Bearer ${data.access_token}`}
+                    });
+                    
+                    if (userInfoRes.ok) {
+                        const userInfo = await userInfoRes.json();
+                        addResult(`✅ User role: ${userInfo.role} (${userInfo.email})`, "success");
+                        
+                        if (userInfo.role === 'admin') {
+                            addResult("🎉 You are an admin! Ready to access /admin/dashboard", "success");
+                        } else {
+                            addResult("⚠️ Warning: Role is not 'admin'", "error");
+                        }
+                    } else {
+                        addResult("❌ Failed to get user info", "error");
+                    }
+                } else {
+                    const err = await res.json();
+                    addResult(`❌ Login failed: ${err.detail}`, "error");
+                }
+            } catch (e) {
+                addResult(`❌ Error: ${e.message}`, "error");
+            }
+        }
+
+        // Check router guard logic in the JS bundle
+        async function checkRouter() {
+            addResult("🛣️ Checking router guard logic...", "info");
+            
+            try {
+                const response = await fetch('/assets/index-DYN-e3_j.js?v=' + Date.now());
+                const text = await response.text();
+                
+                // Check for admin route guard
+                if (text.includes('requiresAdmin')) {
+                    addResult("✅ Router guard for /admin exists", "success");
+                    
+                    // Check isAdmin logic
+                    if (text.includes('isAdmin') && text.includes('"admin"')) {
+                        addResult("✅ Admin role check logic found", "success");
+                        
+                        // Extract the relevant part
+                        const match = text.match(/requiresAdmin.*alert\([^)]+\)/);
+                        if (match) {
+                            addResult(`📋 Guard message: ${match[0].substring(0, 100)}...`, "info");
+                        }
+                    } else {
+                        addResult("❌ Admin role check logic missing", "error");
+                    }
+                } else {
+                    addResult("❌ Router guard for /admin NOT found", "error");
+                }
+                
+            } catch (e) {
+                addResult(`❌ Error: ${e.message}`, "error");
+            }
+        }
+
+        // Go to admin dashboard with forced reload
+        async function goToAdmin() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                addResult("⚠️ Please login first (click '测试登录' button)", "info");
+                return;
+            }
+
+            addResult("🚀 Redirecting to admin dashboard with forced reload...", "info");
+            
+            // Clear everything and force fresh load
+            setTimeout(() => {
+                const url = '/admin/dashboard?force_reload=' + Date.now() + '&debug=true';
+                
+                // Log the redirect URL for debugging
+                addResult(`📍 Target URL: ${url}`, "success");
+                
+                window.location.href = url;
+            }, 1500);
+        }
+
+        // Auto-run file check on load
+        testFiles();
+    </script>
+</body>
+</html>

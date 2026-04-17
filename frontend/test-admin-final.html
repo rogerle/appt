@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>🔧 管理后台测试 - 强制无缓存</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .info { background: #e3f2fd; padding: 15px; border-left: 4px solid #2196f3; margin: 10px 0; }
+        button { background: #4caf50; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-right: 10px; }
+        button:hover { background: #43a047; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 6px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🚀 管理后台终极测试页</h1>
+        <p><strong>时间戳:</strong> <span id="timestamp"></span></p>
+        
+        <div class="info">
+            <strong>当前状态：</strong> 
+            <span id="status">正在检查...</span>
+        </div>
+
+        <button onclick="testLogin()">🔐 测试登录</button>
+        <button onclick="loadAdminLayout()">📊 加载管理后台</button>
+    </div>
+
+    <div class="card" id="results">
+        <h2>📊 测试结果：</h2>
+        <pre id="result-text"></pre>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toISOString();
+        
+        const results = [];
+        function addResult(text, type) {
+            results.push(`<strong>[${new Date().toLocaleTimeString()}]</strong> ${text}`);
+            document.getElementById('result-text').innerHTML = results.join('<br>');
+        }
+
+        // 1. Check if AdminLayout exists
+        async function testAdminLayout() {
+            addResult("Checking AdminLayout files...", "info");
+            
+            try {
+                const res1 = await fetch('/assets/AdminLayout-BhK8-Q69.js?v=' + Date.now());
+                addResult(`✅ AdminLayout JS: ${res1.status === 200 ? '存在' : '不存在'}`, 
+                    res1.status === 200 ? 'success' : 'error');
+                
+                const res2 = await fetch('/assets/AdminLayout-BKjO4gCP.css?v=' + Date.now());
+                addResult(`✅ AdminLayout CSS: ${res2.status === 200 ? '存在' : '不存在'}`, 
+                    res2.status === 200 ? 'success' : 'error');
+                
+                const res3 = await fetch('/assets/Dashboard-DDw14vMX.js?v=' + Date.now());
+                addResult(`✅ Dashboard JS: ${res3.status === 200 ? '存在' : '不存在'}`, 
+                    res3.status === 200 ? 'success' : 'error');
+                
+            } catch (e) {
+                addResult(`❌ Error checking files: ${e.message}`, "error");
+            }
+        }
+
+        // 2. Test login
+        async function testLogin() {
+            addResult("Testing login...", "info");
+            
+            try {
+                const res = await fetch('/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email:'admin@appt.com', password:'admin123'})
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    addResult(`✅ Login successful! Token received.`, "success");
+                    
+                    // Store token
+                    localStorage.setItem('access_token', data.access_token);
+                    localStorage.setItem('test_mode', 'true');
+                    
+                    // Check user info
+                    const userInfoRes = await fetch('/api/v1/auth/me', {
+                        headers: {'Authorization': `Bearer ${data.access_token}`}
+                    });
+                    
+                    if (userInfoRes.ok) {
+                        const userInfo = await userInfoRes.json();
+                        addResult(`✅ User role: ${userInfo.role} (${userInfo.email})`, "success");
+                        
+                        if (userInfo.role === 'admin') {
+                            addResult("🎉 You are an admin! Ready to access /admin/dashboard", "success");
+                        } else {
+                            addResult("⚠️ Warning: Role is not 'admin'", "error");
+                        }
+                    }
+                } else {
+                    const err = await res.json();
+                    addResult(`❌ Login failed: ${err.detail}`, "error");
+                }
+            } catch (e) {
+                addResult(`❌ Error: ${e.message}`, "error");
+            }
+        }
+
+        // 3. Load AdminLayout directly
+        async function loadAdminLayout() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                addResult("⚠️ Please login first (click '测试登录' button)", "info");
+                return;
+            }
+
+            addResult("Loading AdminLayout with admin role...", "info");
+            
+            // Create a temporary iframe to test the layout
+            const iframe = document.createElement('iframe');
+            iframe.style.width = '100%';
+            iframe.style.height = '400px';
+            iframe.style.border = '1px solid #ccc';
+            iframe.style.marginTop = '20px';
+            
+            // Inject a test page that simulates the real app
+            const testHtml = `
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Admin Layout Test</title>
+                    <script src="/assets/vendor-BodbTljy.js?v=${Date.now()}"></script>
+                    <script src="/assets/axios-BOeqtr82.js?v=${Date.now()}"></script>
+                    <script src="/assets/index-${Date.now()}.js?v=${Date.now()}"></script>
+                </head>
+                <body>
+                    <h1>Admin Layout Test</h1>
+                    <div id="app"></div>
+                    <script>
+                        // Simulate the real app's router and auth store
+                        const { createRouter, createWebHistory } = VueRouter;
+                        
+                        async function loadModule(url) {
+                            try {
+                                const response = await fetch(url + '?nocache=' + Date.now());
+                                return await response.text();
+                            } catch (e) {
+                                console.error('Failed to load:', url, e);
+                                throw e;
+                            }
+                        }
+                        
+                        // Load the actual admin layout module
+                        const adminLayoutContent = await fetch('/assets/AdminLayout-BhK8-Q69.js?v=' + Date.now());
+                        if (adminLayoutContent.ok) {
+                            document.body.innerHTML += '<div class="success">✅ AdminLayout loaded successfully!</div>';
+                        } else {
+                            document.body.innerHTML += '<div class="error">❌ AdminLayout NOT found</div>';
+                        }
+                    </script>
+                </body>
+                </html>
+            `;
+            
+            document.getElementById('results').appendChild(iframe);
+            iframe.contentWindow.document.write(testHtml);
+        }
+
+        // Run initial check on load
+        testAdminLayout();
+    </script>
+</body>
+</html>

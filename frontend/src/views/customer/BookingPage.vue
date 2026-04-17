@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import InstructorCard from '../components/InstructorCard.vue'
-import BookingForm from '../components/BookingForm.vue'
-import { instructorApi, scheduleApi, bookingApi } from '../api/services'
+import InstructorCard from '../../components/InstructorCard.vue'
+import BookingForm from '../../components/BookingForm.vue'
+import { instructorApi, scheduleApi, bookingApi } from '../../api/services'
 
 const router = useRouter()
 

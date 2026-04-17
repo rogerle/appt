@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { bookingApi } from '../api/services'
+import { bookingApi } from '../../api/services'
 
 const router = useRouter()
 

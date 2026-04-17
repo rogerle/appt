@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>🔍 实际加载检查</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔍 检查实际加载的文件</h1>
+        
+        <p><strong>当前时间:</strong> <span id="timestamp"></span></p>
+        
+        <button onclick="checkActualLoad()">📋 检查浏览器实际加载了什么</button>
+    </div>
+
+    <div class="card">
+        <h2>📊 结果：</h2>
+        <pre id="result-text"></pre>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        
+        const results = [];
+        function addResult(text, type) {
+            results.push(`<strong>[${new Date().toLocaleTimeString()}]</strong> ${text}`);
+            document.getElementById('result-text').innerHTML = results.join('<br>');
+        }
+
+        // Check what the browser actually loads when accessing /admin/dashboard
+        async function checkActualLoad() {
+            addResult("📋 Checking actual file load...", "info");
+            
+            // First, let's fetch index.html to see what JS it references
+            try {
+                const htmlRes = await fetch('/index.html?v=' + Date.now());
+                const htmlText = await htmlRes.text();
+                
+                addResult("✅ Fetched index.html", "success");
+                
+                // Extract script src from index.html
+                const scriptMatch = htmlText.match(/<script[^>]+src="([^"]+)"/);
+                if (scriptMatch) {
+                    const jsFile = scriptMatch[1];
+                    addResult(`📄 index.html references: ${jsFile}`, "success");
+                    
+                    // Check if this file exists and contains AdminLayout
+                    const jsRes = await fetch(jsFile + '?v=' + Date.now());
+                    if (jsRes.ok) {
+                        addResult(`✅ ${jsFile} is accessible`, "success");
+                        
+                        // Read the JS content to check for AdminLayout
+                        const jsText = await jsRes.text();
+                        
+                        if (jsText.includes('AdminLayout')) {
+                            addResult("🎉 index-DYN-e3_j.js CONTAINS AdminLayout!", "success");
+                            
+                            // Check for admin route guard
+                            if (jsText.includes('requiresAdmin')) {
+                                addResult("✅ Router guard with requiresAdmin exists", "success");
+                                
+                                // Check isAdmin logic
+                                const isAdminMatch = jsText.match(/isAdmin.*role.*admin/);
+                                if (isAdminMatch) {
+                                    addResult(`🔐 Admin role check: ${isAdminMatch[0].substring(0, 80)}...`, "success");
+                                } else {
+                                    addResult("⚠️ isAdmin logic might be minified or different", "error");
+                                }
+                            } else {
+                                addResult("❌ requiresAdmin guard NOT found in JS!", "error");
+                            }
+                        } else {
+                            addResult(`❌ ${jsFile} does NOT contain AdminLayout!`, "error");
+                            
+                            // Show first 200 chars for debugging
+                            addResult(`First 200 chars: "${jsText.substring(0, 200)}..."`, "info");
+                        }
+                        
+                        // Also check the CSS file referenced in index.html
+                        const cssMatch = htmlText.match(/<link[^>]+href="([^"]+\.css)"/);
+                        if (cssMatch) {
+                            const cssFile = cssMatch[1];
+                            addResult(`📄 CSS: ${cssFile}`, "info");
+                            
+                            // Check if AdminLayout styles are in this CSS
+                            const cssRes = await fetch(cssFile + '?v=' + Date.now());
+                            if (cssRes.ok) {
+                                const cssText = await cssRes.text();
+                                
+                                if (cssText.includes('.admin-sidebar') || cssText.includes('AdminLayout')) {
+                                    addResult("✅ AdminLayout CSS found in index-CFLn5kMX.css", "success");
+                                } else {
+                                    addResult("⚠️ AdminLayout styles not found in this CSS file", "info");
+                                }
+                            }
+                        }
+                    } else {
+                        addResult(`❌ ${jsFile} NOT accessible (${jsRes.status})`, "error");
+                    }
+                } else {
+                    addResult("❌ Could not find script tag in index.html", "error");
+                }
+                
+            } catch (e) {
+                addResult(`❌ Error: ${e.message}`, "error");
+            }
+        }
+
+        // Auto-run on load
+        setTimeout(checkActualLoad, 500);
+    </script>
+</body>
+</html>

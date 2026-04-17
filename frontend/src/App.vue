@@ -11,7 +11,7 @@ const authStore = useAuthStore()
 const isLoggedIn = computed(() => authStore.isAuthenticated)
 const isAdminUser = computed(() => authStore.isAdmin)
 
-// Check if we're on an admin page (hide C-side header)
+// Check if we're on an admin page (hide C-side header/footer)
 const isOnAdminPage = computed(() => {
   return route.path.startsWith('/admin')
 })
@@ -24,11 +24,14 @@ function handleLogout(): void {
     authStore.logout()
   }
 }
+
+
+
 </script>
 
 <template>
   <div class="min-h-screen flex flex-col bg-primary-50">
-    <!-- Hide C-side header on admin pages (AdminLayout has its own layout) -->
+    <!-- C-side Header (hide on admin pages) -->
     <header v-if="!isOnAdminPage" class="bg-white shadow-sm border-b border-primary-200 sticky top-0 z-50">
       <div class="container-mobile flex items-center justify-between py-4 px-4">
         <!-- Logo -->
@@ -180,10 +183,17 @@ function handleLogout(): void {
       </nav>
     </header>
 
-    <!-- Main Content Area (only show on C-side pages) -->
+
+
+    <!-- C-side Main Content (hide on admin pages) -->
     <main v-if="!isOnAdminPage" class="flex-grow container-mobile py-6 px-4 animate-fade-in">
       <RouterView />
     </main>
+
+    <!-- Admin Pages: RouterView will render inside AdminLayout.vue -->
+    <div v-if="isOnAdminPage">
+      <RouterView />
+    </div>
 
     <!-- Footer (only show on C-side pages) -->
     <footer v-if="!isOnAdminPage" class="bg-white border-t border-primary-200 mt-auto">

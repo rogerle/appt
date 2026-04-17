@@ -153,13 +153,18 @@ function formatDate(dateStr: string | null): string {
 function formatTimeRange(startTime: any, endTime: any): string {
   if (!startTime || !endTime) return '-'
   
-  // Convert Time objects to strings
-  const start = startTime.getHours().toString().padStart(2, '0') + ':' + 
-                startTime.getMinutes().toString().padStart(2, '0')
-  const end = endTime.getHours().toString().padStart(2, '0') + ':' + 
-              endTime.getMinutes().toString().padStart(2, '0')
+  // startTime and endTime are strings like "14:00:00" from Pydantic
+  const startStr = String(startTime)
+  const endStr = String(endTime)
   
-  return `${start} - ${end}`
+  // Extract HH:MM from HH:MM:SS format
+  const extractHHMM = (timeStr: string): string => {
+    if (!timeStr) return '00:00'
+    const parts = timeStr.split(':')
+    return `${parts[0].padStart(2, '0')}:${parts[1]?.padStart(2, '0') || '00'}`
+  }
+  
+  return `${extractHHMM(startStr)} - ${extractHHMM(endStr)}`
 }
 
 function getStatusText(status: string): string {

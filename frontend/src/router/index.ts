@@ -2,25 +2,26 @@ import { createRouter, createWebHistory } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
 const routes: RouteRecordRaw[] = [
-  // Public routes
+  // ==================== C 端页面 (移动端优先) ====================
+  
   {
     path: '/',
     name: 'home',
-    component: () => import('../views/Home.vue'),
+    component: () => import('../views/customer/Home.vue'),
     meta: { title: '首页' }
   },
   
   {
     path: '/login',
     name: 'login',
-    component: () => import('../views/Login.vue'),
+    component: () => import('../views/auth/Login.vue'),
     meta: { title: '登录', requiresGuest: true }
   },
   
   {
     path: '/register',
     name: 'register',
-    component: () => import('../views/Register.vue'),
+    component: () => import('../views/auth/Register.vue'),
     meta: { title: '注册', requiresGuest: true }
   },
 
@@ -28,64 +29,59 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/booking',
     name: 'booking',
-    component: () => import('../views/BookingPage.vue'),
+    component: () => import('../views/customer/BookingPage.vue'),
     meta: { title: '预约课程' }
   },
   
   {
     path: '/my-bookings',
     name: 'my-bookings',
-    component: () => import('../views/MyBookings.vue'),
+    component: () => import('../views/customer/MyBookings.vue'),
     meta: { title: '我的预约' }
   },
+
+  // ==================== 管理后台 (PC 端独立) ====================
   
-  // Admin routes (protected - requires authentication + admin role)
   {
     path: '/admin',
-    redirect: '/admin/dashboard'
-  },
-  
-  // Admin Layout wrapper
-  {
-    path: '/admin',
-    name: 'admin-layout',
-    component: () => import('../layouts/AdminLayout.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
+    component: () => import('../admin/layouts/AdminLayout.vue'),
     redirect: '/admin/dashboard',
     children: [
       {
         path: 'dashboard',
-        name: 'admin-dashboard',
-        component: () => import('../views/admin/Dashboard.vue'),
-        meta: { title: '管理后台 - 仪表盘' }
+        name: 'AdminDashboard',
+        component: () => import('../admin/views/Dashboard.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
       },
       {
         path: 'instructors',
-        name: 'admin-instructors',
-        component: () => import('../views/admin/InstructorManagement.vue'),
-        meta: { title: '教练管理' }
+        name: 'InstructorManagement',
+        component: () => import('../admin/views/InstructorManagement.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
       },
       {
         path: 'schedules',
-        name: 'admin-schedules',
-        component: () => import('../views/admin/ScheduleManagement.vue'),
-        meta: { title: '排课管理' }
+        name: 'ScheduleManagement',
+        component: () => import('../admin/views/ScheduleManagement.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
       },
       {
         path: 'users',
-        name: 'admin-users',
-        component: () => import('../views/admin/UserManagement.vue'),
-        meta: { title: '用户管理' }
+        name: 'UserManagement',
+        component: () => import('../admin/views/UserManagement.vue'),
+        meta: { requiresAuth: true, requiresAdmin: true }
       }
     ]
-  }
+  },
+
 ]
 
 const router = createRouter({
   history: createWebHistory((import.meta as any).env.BASE_URL),
   routes,
+  
   /**
-   * Scroll to top on navigation
+   * Scroll to top on navigation (C 端)
    */
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
