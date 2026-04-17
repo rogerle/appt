@@ -29,10 +29,9 @@ SERVICES="appt-db appt-backend appt-frontend"
 # ============================================================================
 
 print_header() {
-    echo -e "${CYAN}================================================================${NC}"
+    echo -e "${CYAN}=============================================================${NC}"
     echo -e "${CYAN}$1${NC}"
-    echo -e "${CYAN}================================================================${NC}"
-}
+    echo -e "${CYAN}=============================================================${NC}"
 
 print_success() {
     echo -e "${GREEN}✓ $1${NC}"
@@ -83,9 +82,16 @@ run_compose() {
 # ============================================================================
 
 cmd_start() {
-    print_header "Starting Appt Services"
+    print_header "Starting Appt Services (Production Ready)"
     
     cd "$PROJECT_DIR"
+    
+    echo ""
+    echo -e "${GREEN}ℹ️  Production Deployment Mode${NC}"
+    echo -e "   • Using Docker Compose with production configuration"
+    echo -e "   • Auto-building latest code from git repository"
+    echo -e "   • Initializing database and creating admin user"
+    echo ""
     
     # Copy admin initialization script to backend container
     if [ -f "$PROJECT_DIR/scripts/init_admin_user.py" ]; then
@@ -372,77 +378,99 @@ cmd_shell() {
 cmd_help() {
     cat << 'EOF'
 =============================================================================
-Appt Yoga Booking System - Docker Service Manager
+Appt Yoga Booking System - Docker Service Manager (Production Ready)
 =============================================================================
 
 USAGE:
   ./manage.sh [command] [options]
 
 COMMANDS:
-  start       Start all services (build + run in background)
-              - Builds latest code from git
-              - Starts database, backend API, and frontend
-              - Waits for health checks to pass
+  start       **一键启动**所有服务（生产环境推荐）
+              • Builds latest code from git repository
+              • Starts database, backend API, and frontend services
+              • Waits for health checks to pass (automatic)
+              • Initializes admin user if not exists (admin@appt.com / admin123)
 
-  stop        Stop all running services gracefully
-              - Preserves data in volumes
-              - Removes containers but keeps images
+  stop        优雅停止所有服务
+              • Preserves database volumes (data not lost)
+              - Removes containers but keeps Docker images
 
-  restart     Stop then start all services with rebuild
-              - Useful after code changes
-              - Rebuilds Docker images before starting
+  restart     重启所有服务（自动重新构建镜像）
+              • Useful after code changes or configuration updates
+              • Rebuilds Docker images from latest git repository
 
-  status      Show current status of all services
-              - Displays container state and health
-              - Checks if ports are accessible
-              - Shows service URLs
+  status      查看服务运行状态和健康检查
+              • Displays container state (running/stopped) and health status
+              • Checks if ports are accessible (8080, 8000)
+              • Shows service URLs and access information
 
-  logs        View service logs
-              ./manage.sh logs          # All services (follow mode)
-              ./manage.sh logs backend  # Specific service only
-              Use Ctrl+C to stop following
+  logs        查看服务日志（实时跟踪）
+              • ./manage.sh logs          → 所有服务的最近 50 行日志（实时跟踪模式）
+              • ./manage.sh logs backend  → 仅查看特定服务（backend/db/frontend）
+              • Use Ctrl+C to stop following
 
-  clean       Remove all containers, volumes, and networks
-              ⚠️ WARNING: This will delete database data!
-              Requires confirmation before proceeding
+  clean       清理所有容器、卷和网络（⚠️ **删除数据库数据**！）
+              • Removes ALL stopped containers, volumes (包括 PostgreSQL 数据!), and networks
+              ⚠️ WARNING: THIS IS IRREVERSIBLE - Database will be completely wiped!
+              • Requires explicit confirmation (type 'yes') before proceeding
 
-  shell       Access service shells for debugging
-              ./manage.sh shell         # Show available services
-              - appt-db: PostgreSQL SQL shell
-              - appt-backend: Bash shell with FastAPI app
-              - appt-frontend: Shell with Vue.js build artifacts
+  shell       进入服务 Shell（调试用）
+              • ./manage.sh shell         → 显示可用的服务和命令
+              • appt-db    → PostgreSQL SQL shell (psql)
+              • appt-backend → Bash shell with FastAPI application code
+              • appt-frontend → Alpine shell with Vue.js build artifacts
 
 EXAMPLES:
-  # Start the application (first time or after changes)
+  # 🎯 Start the application (first time or after changes)
   ./manage.sh start
 
-  # Check if services are running
+  # 📊 Check if services are running and healthy
   ./manage.sh status
 
-  # View backend API logs in real-time
+  # 🔍 View backend API logs in real-time
   ./manage.sh logs backend
 
-  # Restart after code changes
-  ./manage.sh restart
+  # 🔄 Restart after code changes (auto rebuilds Docker images)
+  git pull origin main && ./manage.sh restart
 
-  # Access database to check data
+  # 🐛 Access database to check data
   docker exec -it appt-db psql -U appt -d appt_db
+  
+  # 🧹 Clean everything and start fresh (⚠️ deletes all data!)
+  ./manage.sh clean && ./manage.sh start
 
-TROUBLESHOOTING:
-  If services fail to start:
+TROUBLESHOOTING & 常见问题:
+
+🔧 If services fail to start (启动失败):
     1. Check if Docker daemon is running: systemctl status docker
     2. Verify ports are not in use: sudo lsof -i :8080,8000,5432
-    3. Check logs for errors: ./manage.sh logs
+    3. Check logs for errors: ./manage.sh logs backend
     4. Try clean restart: ./manage.sh clean && ./manage.sh start
 
-  If database is empty after restart:
+🔧 If database is empty after restart (数据库为空):
     - Run the seed script: docker exec appt-backend python scripts/seed_data.py
+    
+🔧 If admin user cannot login (管理员无法登录):
+    - Default credentials: admin@appt.com / admin123
+    - Check if init_admin_user.py ran successfully: ./manage.sh logs backend | grep "admin"
+    - Reset password manually: docker exec appt-backend python scripts/init_admin_user.py --reset-password
+
+🔧 If admin dashboard shows blank page (管理后台空白):
+    - Force refresh browser: Ctrl+Shift+R (clear JS/CSS cache)
+    - Check router configuration: frontend/src/router/index.ts should have /admin/* routes
+    - Rebuild frontend: ./manage.sh restart
 
 ACCESS URLs (when services are running):
-  Frontend SPA:     http://localhost:8080
-  Backend API:      http://localhost:8000
-  Swagger Docs:     http://localhost:8000/docs
-  ReDoc:            http://localhost:8000/redoc
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🌐 Frontend SPA:           http://localhost:8080
+  🔧 Backend API:            http://localhost:8000
+  📖 Swagger Docs:           http://localhost:8000/docs
+  📘 ReDoc (API Reference):  http://localhost:8000/redoc
+  
+💡 Production Deployment:
+   - Replace localhost with your VPS IP/domain
+   - Configure SSL certificate (Let's Encrypt recommended)
+   - Update ALLOWED_ORIGINS in backend/.env
 
 =============================================================================
 EOF
