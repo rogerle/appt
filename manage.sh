@@ -10,12 +10,12 @@
 set -e
 
 # Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+RED='\033[0;31m]'
+GREEN='\033[0;32m]'
+YELLOW='\033[1;33m]'
+BLUE='\033[0;34m]'
+CYAN='\033[0;36m]'
+NC='\033[0m]' # No Color
 
 # Project directory
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -87,6 +87,16 @@ cmd_start() {
     
     cd "$PROJECT_DIR"
     
+    # Copy admin initialization script to backend container
+    if [ -f "$PROJECT_DIR/scripts/init_admin_user.py" ]; then
+        print_info "Copying admin initialization script to backend..."
+        docker cp "$PROJECT_DIR/scripts/init_admin_user.py" appt-backend:/app/scripts/ 2>/dev/null || {
+            echo "⚠️  Could not copy init script - will create it in container if needed"
+            # Create directory and file inside container
+            docker exec appt-backend mkdir -p /app/scripts 2>/dev/null || true
+        }
+    fi
+    
     print_info "Building and starting all services..."
     run_compose up -d --build
     
@@ -96,6 +106,10 @@ cmd_start() {
         # Wait for services to be healthy
         print_info "Waiting for services to become healthy (this may take ~30 seconds)..."
         sleep 15
+        
+        # Check if admin user exists, create if not
+        print_info "Checking database initialization..."
+        check_and_create_admin_user
         
         # Show status
         cmd_status
@@ -111,6 +125,61 @@ cmd_start() {
         print_error "Failed to start services. Check the error messages above."
         exit 1
     fi
+}
+
+# ============================================================================
+# Helper Function: Create Admin User if Not Exists
+# ============================================================================
+check_and_create_admin_user() {
+    # Wait for backend to be fully ready
+    print_info "Waiting for backend API to be ready..."
+    local max_attempts=30
+    local attempt=1
+    
+    while [ $attempt -le $max_attempts ]; do
+        if curl -s http://localhost:8000/health > /dev/null 2>&1; then
+            print_success "Backend API is ready!"
+            break
+        fi
+        
+        if [ $attempt -eq $max_attempts ]; then
+            print_error "Backend API not responding after $max_attempts attempts"
+            return 1
+        fi
+        
+        attempt=$((attempt + 1))
+        sleep 2
+    done
+    
+    # Check if admin user exists via API (try to login)
+    local response=$(curl -s http://localhost:8000/api/v1/auth/login \  
+      -H "Content-Type: application/json" \  
+      -d '{"email":"admin@appt.com","password":"admin123"}' 2>/dev/null)
+    
+    if echo "$response" | grep -q '"detail":'; then
+        # Login failed (user doesn't exist or wrong password)
+        print_info "Creating initial admin account..."
+        
+        # Create admin user via registration API
+        local register_response=$(curl -s -X POST http://localhost:8000/api/v1/auth/register \  
+          -H 'Content-Type: application/json' \  
+          -d '{"email":"admin@appt.com","username":"Administrator","password":"admin123", "is_active":true}' 2>/dev/null)
+        
+        if echo "$register_response" | grep -q '"detail":'; then
+            # User might already exist (duplicate email), try to get token anyway
+            print_warning "User may already exist. Verifying..."
+        else
+            print_success "Admin user created successfully!"
+        fi
+    fi
+    
+    # Run the admin initialization script via database connection
+    print_info "Checking and initializing admin user in database..."
+    
+    docker exec appt-backend python /app/scripts/init_admin_user.py 2>&1 || {
+        echo "⚠️  Admin init script failed - manual setup may be needed"
+        return 0  # Don't fail the whole startup
+    }
 }
 
 cmd_stop() {

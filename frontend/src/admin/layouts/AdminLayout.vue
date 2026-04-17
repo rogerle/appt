@@ -11,17 +11,17 @@
 </template>
 
 <script setup lang="ts">
-import Sidebar from '../components/admin/Sidebar.vue'
+import Sidebar from '../../components/admin/Sidebar.vue'
 </script>
 
 <style scoped>
 .admin-layout {
-  display: flex;
-  min-height: calc(100vh - 64px); /* Subtract header height */
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh; /* Full viewport height */
 }
 
 .admin-main {
-  flex: 1;
   padding: 24px;
   background: #f9fafb;
   overflow-y: auto;
@@ -29,7 +29,7 @@ import Sidebar from '../components/admin/Sidebar.vue'
 
 @media (max-width: 768px) {
   .admin-layout {
-    flex-direction: column;
+    grid-template-columns: 1fr; /* Single column on mobile */
   }
   
   .admin-main {

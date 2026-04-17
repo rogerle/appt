@@ -84,9 +84,9 @@ function logout(): void {
   color: white;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 64px); /* Subtract header height */
+  height: 100vh; /* Full viewport height */
   position: sticky;
-  top: 64px;
+  top: 0;
 }
 
 .sidebar-header {

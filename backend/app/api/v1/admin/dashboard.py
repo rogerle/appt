@@ -78,7 +78,7 @@ async def get_recent_bookings(limit: int = 10, offset: int = 0, db: Session = De
             booking_date=schedule.schedule_date if schedule else None,
             start_time=schedule.start_time if schedule else None,
             end_time=schedule.end_time if schedule else None,
-            class_type=schedule.class_type if schedule else "Unknown",
+            class_type=f"{instructor_name}'s Class",  # Derived from instructor
             instructor_name=instructor_name, status=booking.status,
             created_at=booking.created_at, notes=booking.notes or ""))
 

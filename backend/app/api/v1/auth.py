@@ -62,9 +62,9 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_user)
     
-    # Generate JWT token for auto-login after registration
+    # Generate JWT token with user role in payload
     access_token = create_access_token(
-        data={"sub": db_user.email},
+        data={"sub": db_user.email, "role": db_user.role},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     
@@ -110,9 +110,9 @@ async def login(credentials: UserLogin, db: Session = Depends(get_db)):
             detail="账户已被禁用，请联系管理员"
         )
     
-    # Generate JWT token with email in 'sub' field
+    # Generate JWT token with user role in payload
     access_token = create_access_token(
-        data={"sub": user.email},
+        data={"sub": user.email, "role": user.role},
         expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     

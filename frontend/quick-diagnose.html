@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>🔧 快速诊断 - Appt</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        button { background: #4caf50; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; margin-right: 10px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Appt 管理后台快速诊断</h1>
+        <p><strong>当前时间:</strong> <span id="timestamp"></span></p>
+        
+        <button onclick="testLogin()">🔐 测试登录</button>
+        <button onclick="checkFiles()">📁 检查文件</button>
+        <button onclick="goToAdmin()">🚪 访问管理后台</button>
+    </div>
+
+    <div class="card" id="results">
+        <h2>📊 测试结果：</h2>
+        <pre id="result-text"></pre>
+    </div>
+
+    <script>
+        document.getElementById('timestamp').textContent = new Date().toLocaleString();
+        
+        const results = [];
+        function addResult(text, type) {
+            results.push(`<strong>[${new Date().toLocaleTimeString()}]</strong> ${text}`);
+            document.getElementById('result-text').innerHTML = results.join('<br>');
+        }
+
+        // Check if files exist
+        async function checkFiles() {
+            addResult("Checking files...", "info");
+            
+            const files = [
+                '/assets/index-v_EZtXHP.js',
+                '/assets/AdminLayout-JFcSu90D.js',
+                '/assets/Dashboard-CwxZCPkJ.js'
+            ];
+            
+            for (const url of files) {
+                try {
+                    const res = await fetch(url + '?v=' + Date.now(), { method: 'HEAD' });
+                    addResult(`${res.status === 200 ? '✅' : '❌'} ${url.split('/').pop()}`, 
+                        res.status === 200 ? 'success' : 'error');
+                } catch (e) {
+                    addResult(`❌ ${url.split('/').pop()} - Error: ${e.message}`, "error");
+                }
+            }
+        }
+
+        // Test login
+        async function testLogin() {
+            addResult("Testing login...", "info");
+            
+            try {
+                const res = await fetch('http://localhost:8000/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email:'admin@appt.com', password:'admin123'})
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    localStorage.setItem('access_token', data.access_token);
+                    addResult(`✅ Login successful! Token received.`, "success");
+                    
+                    // Check user info
+                    const userInfoRes = await fetch('http://localhost:8000/api/v1/auth/me', {
+                        headers: {'Authorization': `Bearer ${data.access_token}`}
+                    });
+                    
+                    if (userInfoRes.ok) {
+                        const userInfo = await userInfoRes.json();
+                        addResult(`✅ User role: ${userInfo.role} (${userInfo.email})`, "success");
+                        
+                        if (userInfo.role === 'admin') {
+                            addResult("🎉 You are an admin! Ready to access /admin/dashboard", "success");
+                        } else {
+                            addResult("⚠️ Warning: Role is not 'admin'", "error");
+                        }
+                    } else {
+                        addResult("❌ Failed to get user info", "error");
+                    }
+                } else {
+                    const err = await res.json();
+                    addResult(`❌ Login failed: ${err.detail}`, "error");
+                }
+            } catch (e) {
+                addResult(`❌ Error: ${e.message}`, "error");
+            }
+        }
+
+        // Go to admin dashboard
+        async function goToAdmin() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                addResult("⚠️ Please login first (click '测试登录' button)", "info");
+                return;
+            }
+
+            addResult("Redirecting to admin dashboard...", "info");
+            
+            // Force reload with fresh page
+            setTimeout(() => {
+                window.location.href = '/admin/dashboard?force_reload=' + Date.now();
+            }, 1000);
+        }
+
+        // Auto-run file check on load
+        checkFiles();
+    </script>
+</body>
+</html>
