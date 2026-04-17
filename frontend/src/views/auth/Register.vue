@@ -219,7 +219,7 @@ async function handleRegister(): Promise<void> {
 // Clear confirmation password field when user types in password field
 const originalPasswordHandler = (event: Event) => {
   const target = event.target as HTMLInputElement
-  if (target.type === 'password') {
+  if (target.id === 'password') {
     registerForm.confirmPassword = ''
   }
 }
